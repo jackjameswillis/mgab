@@ -77,6 +77,7 @@ best_individual = max(mga.population, key=lambda x: x.fitness)
 test_loss = torch.nn.CrossEntropyLoss()(best_individual(x_test), y_test).item()
 test_accuracy = (best_individual(x_test).argmax(dim=1) == y_test.argmax(dim=1)).float().mean().item()
 
+
 print(f"Test loss of best individual: {test_loss}")
 print(f"Test accuracy of best individual: {test_accuracy * 100:.2f}%")
 
