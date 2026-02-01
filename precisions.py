@@ -35,7 +35,7 @@ class i8:
         self.std = std
 
     def cast_to(self, x):
-        return x.to(torch.float32)
+        return x.to(torch.int8)
     
     def cast_from(self, x):
         return x.to(torch.float32)
@@ -49,7 +49,7 @@ class i8:
         mutated_rounded = torch.round(mutated)
         # Clamp to int8 range [-128, 127] before casting to int8
         mutated_clamped = torch.clamp(mutated_rounded, -128, 127)
-        return mutated_clamped.to(torch.float32)
+        return mutated_clamped.to(torch.int8)
 
 class i4:
     def __init__(self, std=1):
@@ -60,7 +60,7 @@ class i4:
     def cast_to(self, x):
         # Clamp values to the range of int4 [-8, 7] and cast to int8
         x_clamped = torch.clamp(x, -8, 7)
-        return x_clamped.to(torch.float32)
+        return x_clamped.to(torch.int8)
     
     def cast_from(self, x):
         return x.to(torch.float32)
@@ -74,7 +74,7 @@ class i4:
         mutated_rounded = torch.round(mutated)
         # Clamp to int4 range [-8, 7] before casting to int8
         mutated_clamped = torch.clamp(mutated_rounded, -8, 7)
-        return mutated_clamped.to(torch.float32)
+        return mutated_clamped.to(torch.int8)
 
 class i2:
     def __init__(self, std=1):
@@ -85,7 +85,7 @@ class i2:
     def cast_to(self, x):
         # Clamp values to the range of int2 [-2, 1] and cast to int8
         x_clamped = torch.clamp(x, -2, 1)
-        return x_clamped.to(torch.float32)
+        return x_clamped.to(torch.int8)
 
     def cast_from(self, x):
         return x.to(torch.float32)
@@ -99,7 +99,7 @@ class i2:
         mutated_rounded = torch.round(mutated)
         # Clamp to int2 range [-2, 1] before casting to int8
         mutated_clamped = torch.clamp(mutated_rounded, -2, 1)
-        return mutated_clamped.to(torch.float32)
+        return mutated_clamped.to(torch.int8)
 
 class binary:
     def __init__(self, std=0):
@@ -107,12 +107,12 @@ class binary:
         self.dtype = torch.bool
     
     def cast_to(self, x):
-        return ((x + 1)/2).to(torch.float32)
+        return ((x + 1)/2).to(torch.int8)
     
     def cast_from(self, x):
         return (x.to(torch.float32) * 2 - 1)
     
     def mutate(self, x):
-        return x.logical_not().to(torch.float32)
+        return x.logical_not().to(torch.int8)
 
 precisions = dict(zip(['f32', 'i8', 'i4', 'i2', 'binary'], [f32, i8, i4, i2, binary]))

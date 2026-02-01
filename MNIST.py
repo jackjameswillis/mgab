@@ -43,7 +43,7 @@ x_test = x_test.to(device)
 y_test = y_test.to(device)
 
 # Define network parameters for MNIST
-shapes = [784, 128, 10]
+shapes = [784, 1280, 10]
 activation = torch.tanh
 output_activation = lambda x: x
 precision = 'i4'
@@ -51,7 +51,7 @@ bias_std = 1
 mutation_std = 1
 
 # Initialize MGA
-population_size = 10
+population_size = 100
 num_generations = 1000
 mutation_rate = 0 # Defaults to 1/num_parameters
 mga = MGA(population_size, num_generations, mutation_rate)
