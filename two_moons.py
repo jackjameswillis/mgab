@@ -87,5 +87,3 @@ plt.xlabel("Generation")
 plt.ylabel("Fitness")
 plt.savefig(f'fitness_history_{precision}.png')
 plt.show()
-
-print(torch.Tensor(mga.best_fitness_history).detach().numpy())

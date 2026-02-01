@@ -43,8 +43,8 @@ x_test = x_test.to(device)
 y_test = y_test.to(device)
 
 # Define network parameters for MNIST
-shapes = [784, 1280, 10]
-activation = torch.tanh
+shapes = [784, 128, 10]
+activation = torch.relu
 output_activation = lambda x: x
 precision = 'i4'
 bias_std = 1
@@ -54,6 +54,7 @@ mutation_std = 1
 population_size = 100
 num_generations = 1000
 mutation_rate = 0 # Defaults to 1/num_parameters
+BATCH_SIZE = 1000
 mga = MGA(population_size, num_generations, mutation_rate)
 
 # Initialize population
@@ -64,8 +65,9 @@ for generation in range(num_generations):
     print(f"Generation {generation}")
     best_fitness = float('-inf')
     for i in range(population_size):
-        # Tournament selection and evolution
-        fitness = mga.tournament(x_train, y_train, torch.nn.CrossEntropyLoss(), mutation_rate)
+        # Tournament selection and evolution with random batch
+        batch_indices = torch.randperm(len(x_train))[:BATCH_SIZE]
+        fitness = mga.tournament(x_train[batch_indices], y_train[batch_indices], torch.nn.CrossEntropyLoss(), mutation_rate)
         if fitness > best_fitness:
             best_fitness = fitness
 
