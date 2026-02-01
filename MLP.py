@@ -26,8 +26,8 @@ class MLP(nn.Module):
         assert precision in P.precisions.keys()
         self.precision = P.precisions[precision](mutation_std)
         self.bias_precision = P.f32(bias_std)
-        self.weights = []
-        self.biases = []
+        self.weights = nn.ParameterList()
+        self.biases = nn.ParameterList()
         self.fitness = float('-inf')
 
         # Ensure all tensors are created on the correct device
@@ -58,7 +58,7 @@ class MLP(nn.Module):
         return x
     
     def load_state_dict(self, state_dict):
-        self.weights, self.biases = [], []
+        self.weights, self.biases = nn.ParameterList(), nn.ParameterList()
         
         # Load weights and biases from state dict with appropriate casting
         device = next(self.parameters()).device
