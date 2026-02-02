@@ -22,7 +22,7 @@ y_onehot = np.zeros((y.shape[0], 10))
 y_onehot[np.arange(y.shape[0]), y] = 1
 
 # Split into train and test sets
-X_train, X_test, y_train, y_test = train_test_split(X, y_onehot, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y_onehot, test_size=1/7, random_state=42)
 
 # Convert to torch tensors
 x_train = torch.FloatTensor(X_train)
@@ -43,19 +43,19 @@ x_test = x_test.to(device)
 y_test = y_test.to(device)
 
 # Define network parameters for MNIST
-shapes = [784, 128, 10]
+shapes = [784, 1000, 10]
 activation = torch.relu
 output_activation = lambda x: x
-precision = 'i4'
+precision = 'f32'
 bias_std = 1
 mutation_std = 1
 
 # Initialize MGA
 population_size = 100
-num_generations = 500
+num_generations = 1000
 mutation_rate = 0 # Defaults to 1/num_parameters
 BATCH_SIZE = 1000
-mga = MGA(population_size, num_generations, mutation_rate)
+mga = MGA(population_size, num_generations, mutation_rate, population_size)
 
 # Initialize population
 mga.initialize_population(shapes, activation, output_activation, precision, bias_std, mutation_std, x_train, y_train, torch.nn.CrossEntropyLoss())
@@ -68,7 +68,7 @@ for generation in range(num_generations):
     for i in range(population_size):
         # Tournament selection and evolution with random batch
         batch_indices = torch.randperm(len(x_train))[:BATCH_SIZE]
-        fitness, t = mga.tournament(x_train[batch_indices], y_train[batch_indices], torch.nn.CrossEntropyLoss(), mutation_rate, test=False)
+        fitness, t = mga.tournament(x_train[batch_indices], y_train[batch_indices], torch.nn.CrossEntropyLoss(), mutation_rate, test=(x_test, y_test))
         if fitness > best_fitness:
             best_fitness = fitness
             best_test = t
@@ -80,8 +80,8 @@ for generation in range(num_generations):
 
 # Evaluate on test set
 best_individual = max(mga.population, key=lambda x: x.fitness)
-#test_loss = torch.nn.CrossEntropyLoss()(best_individual(x_test), y_test).item()
-#test_accuracy = (best_individual(x_test).argmax(dim=1) == y_test.argmax(dim=1)).float().mean().item()
+test_loss = torch.nn.CrossEntropyLoss()(best_individual(x_test), y_test).item()
+test_accuracy = (best_individual(x_test).argmax(dim=1) == y_test.argmax(dim=1)).float().mean().item()
 
 train_loss = torch.nn.CrossEntropyLoss()(best_individual(x_train), y_train).item()
 train_accuracy = (best_individual(x_train).argmax(dim=1) == y_train.argmax(dim=1)).float().mean().item()

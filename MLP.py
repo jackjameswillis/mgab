@@ -18,7 +18,7 @@ as it is used for genetic algorithm optimization.
 '''
 class MLP(nn.Module):
     def __init__(self, shapes, activation=F.relu, output_activation=None, precision='f32',
-                    bias_std=1, mutation_std=1, scale=True):
+                    bias_std=1, mutation_std=1, scale=False):
         
         super(MLP, self).__init__()
         self.shapes = shapes
@@ -40,7 +40,7 @@ class MLP(nn.Module):
             weight_tensor = self.precision.mutate(torch.zeros(shapes[i + 1], shapes[i], device=device))
             self.weights.append(nn.Parameter(weight_tensor, requires_grad=False))
             # Create bias vector with float32 precision
-            bias_tensor = self.bias_precision.mutate(torch.zeros(shapes[i + 1], device=device))
+            bias_tensor = torch.zeros(shapes[i + 1], device=device)
             self.biases.append(nn.Parameter(bias_tensor, requires_grad=False))
         
         self.param_count = sum(w.numel() + b.numel() for w, b in zip(self.weights, self.biases))
@@ -56,7 +56,7 @@ class MLP(nn.Module):
         for i in range(len(self.weights)):
             x = torch.matmul(x, self.precision.cast_from(self.weights[i]).T)
             if (self.scale):
-                x = x/math.sqrt(2*x.shape[1])
+                x = x/math.sqrt(3*x.shape[1])
             
             x = x + self.bias_precision.cast_from(self.biases[i])
             
@@ -126,7 +126,10 @@ class MLP(nn.Module):
         mutated_state_dict = {}
         device = next(self.parameters()).device
         for k in state_dict.keys():
-            op = self.precision.mutate if 'weight' in k else self.bias_precision.mutate
+            if 'weight' in k:
+                op = self.precision.mutate
+            else:
+                op = self.bias_precision.mutate
             mask = torch.rand_like(state_dict[k].to(torch.float32)) < mutation_rate
             mutated_state_dict[k] = state_dict[k]
             mutated_state_dict[k][mask] = op(state_dict[k][mask])
