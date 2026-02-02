@@ -8,6 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 import precisions as P
+import math
 
 
 '''
@@ -17,7 +18,7 @@ as it is used for genetic algorithm optimization.
 '''
 class MLP(nn.Module):
     def __init__(self, shapes, activation=F.relu, output_activation=None, precision='f32',
-                    bias_std=1, mutation_std=1):
+                    bias_std=1, mutation_std=1, scale=True):
         
         super(MLP, self).__init__()
         self.shapes = shapes
@@ -29,6 +30,7 @@ class MLP(nn.Module):
         self.weights = nn.ParameterList()
         self.biases = nn.ParameterList()
         self.fitness = float('-inf')
+        self.scale = True
 
         # Ensure all tensors are created on the correct device
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -52,7 +54,12 @@ class MLP(nn.Module):
             x = x.to(device)
 
         for i in range(len(self.weights)):
-            x = torch.matmul(x, self.precision.cast_from(self.weights[i]).T) + self.bias_precision.cast_from(self.biases[i])
+            x = torch.matmul(x, self.precision.cast_from(self.weights[i]).T)
+            if (self.scale):
+                x = x/math.sqrt(2*x.shape[1])
+            
+            x = x + self.bias_precision.cast_from(self.biases[i])
+            
             if (i < len(self.weights) - 1):
                 x = self.activation(x)
         return x

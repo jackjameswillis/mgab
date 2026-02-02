@@ -90,6 +90,7 @@ class i2:
     def cast_from(self, x):
         return x.to(torch.float32)
 
+
     # Assumes x is only parameters that you want mutated
     # Performs a gaussian mutation with default std 1 which is
     # then rounded to nearest integer before clamping and casting to int8

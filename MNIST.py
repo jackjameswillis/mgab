@@ -52,39 +52,52 @@ mutation_std = 1
 
 # Initialize MGA
 population_size = 100
-num_generations = 1000
+num_generations = 500
 mutation_rate = 0 # Defaults to 1/num_parameters
 BATCH_SIZE = 1000
 mga = MGA(population_size, num_generations, mutation_rate)
 
 # Initialize population
 mga.initialize_population(shapes, activation, output_activation, precision, bias_std, mutation_std, x_train, y_train, torch.nn.CrossEntropyLoss())
-
+best_tests = []
 # Evolution loop
 for generation in range(num_generations):
     print(f"Generation {generation}")
     best_fitness = float('-inf')
+    best_test = float('-inf')
     for i in range(population_size):
         # Tournament selection and evolution with random batch
         batch_indices = torch.randperm(len(x_train))[:BATCH_SIZE]
-        fitness = mga.tournament(x_train[batch_indices], y_train[batch_indices], torch.nn.CrossEntropyLoss(), mutation_rate)
+        fitness, t = mga.tournament(x_train[batch_indices], y_train[batch_indices], torch.nn.CrossEntropyLoss(), mutation_rate, test=False)
         if fitness > best_fitness:
             best_fitness = fitness
+            best_test = t
+    best_tests += [best_test]
 
     mga.best_fitness_history.append(best_fitness)
     print(f"Best fitness: {best_fitness}")
+    print(f"Best test: {best_test}")
 
 # Evaluate on test set
 best_individual = max(mga.population, key=lambda x: x.fitness)
-test_loss = torch.nn.CrossEntropyLoss()(best_individual(x_test), y_test).item()
-test_accuracy = (best_individual(x_test).argmax(dim=1) == y_test.argmax(dim=1)).float().mean().item()
+#test_loss = torch.nn.CrossEntropyLoss()(best_individual(x_test), y_test).item()
+#test_accuracy = (best_individual(x_test).argmax(dim=1) == y_test.argmax(dim=1)).float().mean().item()
+
+train_loss = torch.nn.CrossEntropyLoss()(best_individual(x_train), y_train).item()
+train_accuracy = (best_individual(x_train).argmax(dim=1) == y_train.argmax(dim=1)).float().mean().item()
 
 
 print(f"Test loss of best individual: {test_loss}")
 print(f"Test accuracy of best individual: {test_accuracy * 100:.2f}%")
+print(f"Train loss of best individual: {train_loss}")
+print(f"Train accuracy of best individual: {train_accuracy * 100:.2f}%")
 
 # Plot fitness history
+
 plt.plot(torch.Tensor(mga.best_fitness_history).detach().cpu().numpy())
+plt.plot(torch.Tensor(best_tests).detach().cpu().numpy())
+plt.legend(["Best Fitness", "Best Test"])
+plt.grid(True)
 plt.title("Best Fitness Over Generations")
 plt.xlabel("Generation")
 plt.ylabel("Fitness")
