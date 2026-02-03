@@ -18,7 +18,7 @@ as it is used for genetic algorithm optimization.
 '''
 class MLP(nn.Module):
     def __init__(self, shapes, activation=F.relu, output_activation=None, precision='f32',
-                    bias_std=1, mutation_std=1, scale=False):
+                    bias_std=1, mutation_std=1, scale_std=0.1):
         
         super(MLP, self).__init__()
         self.shapes = shapes
@@ -27,10 +27,11 @@ class MLP(nn.Module):
         assert precision in P.precisions.keys()
         self.precision = P.precisions[precision](mutation_std)
         self.bias_precision = P.f32(bias_std)
+        self.scale_precision = P.f32(scale_std)
         self.weights = nn.ParameterList()
         self.biases = nn.ParameterList()
+        self.scales = nn.ParameterList()
         self.fitness = float('-inf')
-        self.scale = True
 
         # Ensure all tensors are created on the correct device
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -41,9 +42,12 @@ class MLP(nn.Module):
             self.weights.append(nn.Parameter(weight_tensor, requires_grad=False))
             # Create bias vector with float32 precision
             bias_tensor = torch.zeros(shapes[i + 1], device=device)
+            #bias_tensor = self.bias_precision.mutate(torch.zeros(shapes[i + 1], device=device))
             self.biases.append(nn.Parameter(bias_tensor, requires_grad=False))
+            scale_tensor = torch.ones(shapes[i + 1], device=device)
+            self.scales.append(nn.Parameter(scale_tensor, requires_grad=False))
         
-        self.param_count = sum(w.numel() + b.numel() for w, b in zip(self.weights, self.biases))
+        self.param_count = sum(w.numel() + b.numel() + s.numel() for w, b, s in zip(self.weights, self.biases, self.scales))
         # Move the module to the appropriate device
         self.to(device)
     
@@ -54,11 +58,7 @@ class MLP(nn.Module):
             x = x.to(device)
 
         for i in range(len(self.weights)):
-            x = torch.matmul(x, self.precision.cast_from(self.weights[i]).T)
-            if (self.scale):
-                x = x/math.sqrt(3*x.shape[1])
-            
-            x = x + self.bias_precision.cast_from(self.biases[i])
+            x = torch.matmul(x, self.precision.cast_from(self.weights[i]).T) * self.scale_precision.cast_from(self.scales[i]) + self.bias_precision.cast_from(self.biases[i])
             
             if (i < len(self.weights) - 1):
                 x = self.activation(x)
@@ -89,22 +89,28 @@ class MLP(nn.Module):
         # Clear and rebuild parameters
         self.weights = nn.ParameterList()
         self.biases  = nn.ParameterList()
+        self.scales = nn.ParameterList()
 
         for key, value in state_dict.items():
             if key.startswith("weights"):
                 self.weights.append(nn.Parameter(value.to(device), requires_grad=False))
             elif key.startswith("biases"):
                 self.biases.append(nn.Parameter(value.to(device), requires_grad=False))
+            elif key.startswith("scales"):
+                self.scales.append(nn.Parameter(value.to(device), requires_grad=False))
 
 
     def state_dict(self):
         # Return weights and biases with appropriate casting
         state_dict = {}
         for i in range(len(self.weights)):
-            state_dict[f'weights.{i}'] = self.weights[i]
+            state_dict[f'weights.{i}'] = self.weights[i].clone()
         
         for i in range(len(self.biases)):
-            state_dict[f'biases.{i}'] = self.biases[i]
+            state_dict[f'biases.{i}'] = self.biases[i].clone()
+
+        for i in range(len(self.scales)):
+            state_dict[f'scales.{i}'] = self.scales[i].clone()
         
         return state_dict
     
@@ -128,9 +134,17 @@ class MLP(nn.Module):
         for k in state_dict.keys():
             if 'weight' in k:
                 op = self.precision.mutate
-            else:
+                P = self.precision.precision
+            elif 'bias' in k:
                 op = self.bias_precision.mutate
-            mask = torch.rand_like(state_dict[k].to(torch.float32)) < mutation_rate
+                P = self.precision.precision
+            elif 'scale' in k:
+                op = self.scale_precision.mutate
+                P = self.precision.precision
+            if P == 'f32':
+                mask = torch.ones_like(state_dict[k].to(torch.float32))
+            else:
+                mask = torch.rand_like(state_dict[k].to(torch.float32)) < 1/state_dict[k].numel()#mutation_rate
             mutated_state_dict[k] = state_dict[k]
             mutated_state_dict[k][mask] = op(state_dict[k][mask])
         

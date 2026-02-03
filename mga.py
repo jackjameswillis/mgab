@@ -18,13 +18,13 @@ class MGA:
         self.best_individual = None
         self.best_fitness_history = []
     
-    def initialize_population(self, shapes, activation, output_activation, precision, bias_std, mutation_std, x, y, f):
+    def initialize_population(self, shapes, activation, output_activation, precision, bias_std, mutation_std, scale_std, x, y, f):
         # Move data to GPU if available
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         x, y = x.to(device), y.to(device)
 
         for _ in range(self.population_size):
-            model = MLP(shapes, activation, output_activation, precision, bias_std, mutation_std)
+            model = MLP(shapes, activation, output_activation, precision, bias_std, mutation_std, scale_std)
             model = model.to(device)  # Move model to GPU
             self.population.append(model)
             self.population[-1].evaluate(x, y, f)
@@ -32,7 +32,7 @@ class MGA:
     def tournament(self, x, y, f, mutation_rate, test=False):
 
         A = torch.randint(0, self.population_size, (1,))[0].item()
-        B = (A + 1 + torch.randint(0, self.deme_size, (1,))[0].item()) % self.population_size
+        B = (A + 1 + torch.randint(0, self.deme_size-1, (1,))[0].item()) % self.population_size
         if self.population[A].fitness >= self.population[B].fitness:
             W = A
             L = B

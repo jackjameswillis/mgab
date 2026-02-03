@@ -43,12 +43,13 @@ x_test = x_test.to(device)
 y_test = y_test.to(device)
 
 # Define network parameters for MNIST
-shapes = [784, 1000, 10]
+shapes = [784, 100, 10]
 activation = torch.relu
 output_activation = lambda x: x
-precision = 'f32'
-bias_std = 1
+precision = 'i4'
+bias_std = 0.5
 mutation_std = 1
+scale_std = 0.1
 
 # Initialize MGA
 population_size = 100
@@ -58,7 +59,7 @@ BATCH_SIZE = 1000
 mga = MGA(population_size, num_generations, mutation_rate, population_size)
 
 # Initialize population
-mga.initialize_population(shapes, activation, output_activation, precision, bias_std, mutation_std, x_train, y_train, torch.nn.CrossEntropyLoss())
+mga.initialize_population(shapes, activation, output_activation, precision, bias_std, mutation_std, scale_std, x_train, y_train, torch.nn.CrossEntropyLoss())
 best_tests = []
 # Evolution loop
 for generation in range(num_generations):
