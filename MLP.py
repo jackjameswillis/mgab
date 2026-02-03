@@ -144,7 +144,7 @@ class MLP(nn.Module):
             if P == 'f32':
                 mask = torch.ones_like(state_dict[k].to(torch.float32))
             else:
-                mask = torch.rand_like(state_dict[k].to(torch.float32)) < 1/state_dict[k].numel()#mutation_rate
+                mask = torch.rand_like(state_dict[k].to(torch.float32)) < mutation_rate
             mutated_state_dict[k] = state_dict[k]
             mutated_state_dict[k][mask] = op(state_dict[k][mask])
         

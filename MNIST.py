@@ -44,10 +44,10 @@ y_test = y_test.to(device)
 
 # Define network parameters for MNIST
 shapes = [784, 100, 10]
-activation = torch.relu
+activation = torch.tanh
 output_activation = lambda x: x
-precision = 'i4'
-bias_std = 0.5
+precision = 'i2'
+bias_std = 0.1
 mutation_std = 1
 scale_std = 0.1
 

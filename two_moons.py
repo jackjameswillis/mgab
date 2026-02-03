@@ -28,7 +28,7 @@ shapes = [2, 64, 64, 1]
 activation = torch.tanh
 output_activation = lambda x: x
 precision = 'i2'
-bias_std = 0.5
+bias_std = 0.1
 mutation_std = 1
 scale_std = 0.1
 
