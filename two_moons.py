@@ -28,13 +28,13 @@ shapes = [2, 64, 64, 1]
 activation = torch.tanh
 output_activation = lambda x: x
 precision = 'i2'
-bias_std = 0.1
-mutation_std = 1
-scale_std = 0.1
+bias_std = 1
+mutation_std = 0.01
+scale_std = 0.
 
 # Initialize MGA
-population_size = 5
-num_generations = 3000
+population_size = 10
+num_generations = 1000
 mutation_rate = 0 # Defaults to 1/num_parameters
 mga = MGA(population_size, num_generations, mutation_rate, population_size)
 

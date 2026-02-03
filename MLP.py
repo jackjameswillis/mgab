@@ -18,7 +18,7 @@ as it is used for genetic algorithm optimization.
 '''
 class MLP(nn.Module):
     def __init__(self, shapes, activation=F.relu, output_activation=None, precision='f32',
-                    bias_std=1, mutation_std=1, scale_std=0.1):
+                    bias_std=1, mutation_std=1, scale_std=0.1, bn=False):
         
         super(MLP, self).__init__()
         self.shapes = shapes
@@ -32,13 +32,14 @@ class MLP(nn.Module):
         self.biases = nn.ParameterList()
         self.scales = nn.ParameterList()
         self.fitness = float('-inf')
+        self.bn = bn
 
         # Ensure all tensors are created on the correct device
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
         for i in range(len(shapes)-1):
             # Create weight matrix with specified precision
-            weight_tensor = self.precision.mutate(torch.zeros(shapes[i + 1], shapes[i], device=device))
+            weight_tensor = self.precision.mutate(torch.zeros((shapes[i + 1], shapes[i]), device=device))
             self.weights.append(nn.Parameter(weight_tensor, requires_grad=False))
             # Create bias vector with float32 precision
             bias_tensor = torch.zeros(shapes[i + 1], device=device)
@@ -58,7 +59,13 @@ class MLP(nn.Module):
             x = x.to(device)
 
         for i in range(len(self.weights)):
-            x = torch.matmul(x, self.precision.cast_from(self.weights[i]).T) * self.scale_precision.cast_from(self.scales[i]) + self.bias_precision.cast_from(self.biases[i])
+            x = torch.matmul(x, self.precision.cast_from(self.weights[i]).T)
+
+            if self.bn:
+                # Apply batch norm without learnable parameters
+                x = F.batch_norm(x, torch.zeros_like(x.mean(dim=0)), torch.ones_like(x.var(dim=0)),
+                                None, None, training=False)
+            x = x* self.scale_precision.cast_from(self.scales[i]) + self.bias_precision.cast_from(self.biases[i])
             
             if (i < len(self.weights) - 1):
                 x = self.activation(x)
