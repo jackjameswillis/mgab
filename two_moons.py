@@ -28,15 +28,14 @@ shapes = [2, 64, 64, 1]
 activation = torch.tanh
 output_activation = lambda x: x
 precision = 'i2'
-bias_std = 1
-mutation_std = 0.01
+bias_std = 0.1
+mutation_std = 0.3
 scale_std = 0.
 
 # Initialize MGA
 population_size = 10
 num_generations = 1000
-mutation_rate = 0 # Defaults to 1/num_parameters
-mga = MGA(population_size, num_generations, mutation_rate, population_size)
+mga = MGA(population_size, num_generations, population_size)
 
 # Initialize population
 mga.initialize_population(shapes, activation, output_activation, precision, bias_std, mutation_std, scale_std, x_train, y_train, torch.nn.BCEWithLogitsLoss())
@@ -50,7 +49,7 @@ for generation in range(num_generations):
     best_fitness = float('-inf')
     for i in range(population_size):
         # Tournament selection and evolution
-        fitness, t = mga.tournament(x_train, y_train, torch.nn.BCEWithLogitsLoss(), mutation_rate)
+        fitness, t = mga.tournament(x_train, y_train, torch.nn.BCEWithLogitsLoss())
         if fitness > best_fitness:
             best_fitness = fitness
 
@@ -100,9 +99,6 @@ def plot_decision_boundary(model, X, y, ax):
 plot_decision_boundary(final_best_individual, X_train, y_train, ax)
 plt.savefig(f'decision_boundary_final_{precision}.png')
 plt.close()
-
-
-
 
 # Plot fitness history
 plt.plot(torch.Tensor(best_fitness_history).detach().numpy())

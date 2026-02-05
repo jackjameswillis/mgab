@@ -54,9 +54,8 @@ scale_std = 0.1
 # Initialize MGA
 population_size = 100
 num_generations = 1000
-mutation_rate = 0 # Defaults to 1/num_parameters
 BATCH_SIZE = 1000
-mga = MGA(population_size, num_generations, mutation_rate, population_size)
+mga = MGA(population_size, num_generations, population_size)
 
 # Initialize population
 mga.initialize_population(shapes, activation, output_activation, precision, bias_std, mutation_std, scale_std, x_train, y_train, torch.nn.CrossEntropyLoss())
@@ -69,7 +68,7 @@ for generation in range(num_generations):
     for i in range(population_size):
         # Tournament selection and evolution with random batch
         batch_indices = torch.randperm(len(x_train))[:BATCH_SIZE]
-        fitness, t = mga.tournament(x_train[batch_indices], y_train[batch_indices], torch.nn.CrossEntropyLoss(), mutation_rate, test=(x_test, y_test))
+        fitness, t = mga.tournament(x_train[batch_indices], y_train[batch_indices], torch.nn.CrossEntropyLoss(), test=(x_test, y_test))
         if fitness > best_fitness:
             best_fitness = fitness
             best_test = t

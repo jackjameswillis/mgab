@@ -8,11 +8,10 @@ import torch
 from MLP import MLP
 
 class MGA:
-    def __init__(self, population_size, num_generations, mutation_rate, deme_size=None):
+    def __init__(self, population_size, num_generations, deme_size=None):
         self.population_size = population_size
         self.num_generations = num_generations
-        self.mutation_rate = mutation_rate
-        self.deme_size = deme_size if deme_size is not None else self.population_size // 8
+        self.deme_size = deme_size if deme_size is not None else self.population_size
         self.population = []
         self.generation = 0
         self.best_individual = None
@@ -29,7 +28,7 @@ class MGA:
             self.population.append(model)
             self.population[-1].evaluate(x, y, f)
 
-    def tournament(self, x, y, f, mutation_rate, test=False):
+    def tournament(self, x, y, f, test=False):
 
         A = torch.randint(0, self.population_size, (1,))[0].item()
         B = (A + 1 + torch.randint(0, self.deme_size-1, (1,))[0].item()) % self.population_size
@@ -41,7 +40,7 @@ class MGA:
             L = A
 
         self.population[L].load_state_dict(self.population[L].crossover(self.population[W].state_dict()))
-        self.population[L].load_state_dict(self.population[L].mutate(mutation_rate))
+        self.population[L].load_state_dict(self.population[L].mutate())
         self.population[L].evaluate(x, y, f)
         t = None
         if test:

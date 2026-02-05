@@ -48,24 +48,11 @@ class i8:
     # then rounded to nearest integer before casting to int8
     def mutate(self, x):
         mutations = torch.randn_like(x, dtype=torch.float32, device=x.device) * self.std
-        mutations[mutations > 0] += 1
-        mutations[mutations < 0] -= 1
         mutated = torch.round(x + mutations)
         # Round to nearest integer first
         # Clamp to int8 range [-128, 127] before casting to int8
         mutated_clamped = torch.clamp(mutated, -128, 127)
         return mutated_clamped.to(torch.int8)
-
-    def initializer(self, shape):
-        # Initialize with Xavier uniform and quantize to int8
-        weight = torch.empty(shape, dtype=torch.float32)
-        torch.nn.init.xavier_uniform_(weight)
-        # Quantize to signed 8-bit integers
-        max_val = weight.abs().max()
-        scale = max_val / (2**(8-1) - 1)  # Scale for int8 [-128, 127]
-        weight_q = torch.round(weight / scale)
-        weight_q = torch.clamp(weight_q, -128, 127)
-        return weight_q.to(torch.int8)
 
 class i4:    
 
@@ -87,22 +74,9 @@ class i4:
     # then rounded to nearest integer before clamping and casting to int8
     def mutate(self, x):
         mutations = torch.randn_like(x, dtype=torch.float32, device=x.device) * self.std
-        mutations[mutations > 0] += 1
-        mutations[mutations < 0] -= 1
         mutated = torch.round(x + mutations)
         mutated_clamped = torch.clamp(mutated, -8, 7)
         return mutated_clamped.to(torch.int8)
-
-    def initializer(self, shape):
-        # Initialize with Xavier uniform and quantize to int4
-        weight = torch.empty(shape, dtype=torch.float32)
-        torch.nn.init.xavier_uniform_(weight)
-        # Quantize to signed 4-bit integers [-8, 7]
-        max_val = weight.abs().max()
-        scale = max_val / (2**(4-1) - 1)  # Scale for int4 [-8, 7]
-        weight_q = torch.round(weight / scale)
-        weight_q = torch.clamp(weight_q, -8, 7)
-        return weight_q.to(torch.int8)
 
 class i2:
     def __init__(self, std=1):
@@ -124,22 +98,9 @@ class i2:
     # then rounded to nearest integer before clamping and casting to int8
     def mutate(self, x):
         mutations = torch.randn_like(x, dtype=torch.float32, device=x.device) * self.std
-        mutations[mutations > 0] += 1
-        mutations[mutations < 0] -= 1
         mutated = torch.round(x + mutations)
         mutated_clamped = torch.clamp(mutated, -2, 1)
         return mutated_clamped.to(torch.int8)
-
-    def initializer(self, shape):
-        # Initialize with Xavier uniform and quantize to int2
-        weight = torch.empty(shape, dtype=torch.float32)
-        torch.nn.init.xavier_uniform_(weight)
-        # Quantize to signed 2-bit integers [-2, 1]
-        max_val = weight.abs().max()
-        scale = max_val / (2**(2-1) - 1)  # Scale for int2 [-2, 1]
-        weight_q = torch.round(weight / scale)
-        weight_q = torch.clamp(weight_q, -2, 1)
-        return weight_q.to(torch.int8)
 
 class binary:
     def __init__(self, std=0):

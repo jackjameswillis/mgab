@@ -132,8 +132,7 @@ class MLP(nn.Module):
         
         return crossover_state_dict
     
-    def mutate(self, mutation_rate=0):
-        if mutation_rate == 0: mutation_rate = 1/self.param_count
+    def mutate(self):
         state_dict = self.state_dict()
         # Perform mutation on a state dict
         mutated_state_dict = {}
@@ -148,12 +147,7 @@ class MLP(nn.Module):
             elif 'scale' in k:
                 op = self.scale_precision.mutate
                 P = self.precision.precision
-            if P == 'f32':
-                mask = torch.ones_like(state_dict[k].to(torch.float32))
-            else:
-                mask = torch.rand_like(state_dict[k].to(torch.float32)) < mutation_rate
-            mutated_state_dict[k] = state_dict[k]
-            mutated_state_dict[k][mask] = op(state_dict[k][mask])
+            mutated_state_dict[k] = op(state_dict[k])
         
         return mutated_state_dict
 
