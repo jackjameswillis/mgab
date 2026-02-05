@@ -39,7 +39,7 @@ class MLP(nn.Module):
 
         for i in range(len(shapes)-1):
             # Create weight matrix with specified precision
-            weight_tensor = self.precision.mutate(torch.zeros((shapes[i + 1], shapes[i]), device=device))
+            weight_tensor = self.precision.initializer((shapes[i + 1], shapes[i])).to(device=device)
             self.weights.append(nn.Parameter(weight_tensor, requires_grad=False))
             # Create bias vector with float32 precision
             bias_tensor = torch.zeros(shapes[i + 1], device=device)

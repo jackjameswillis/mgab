@@ -54,6 +54,13 @@ class i8:
         mutated_clamped = torch.clamp(mutated, -128, 127)
         return mutated_clamped.to(torch.int8)
 
+    def initializer(self, shape):
+        # Sample from a Gaussian with std that covers the full range of int8
+        # int8 range is [-128, 127], so we want to sample across this range
+        # A std of ~40 should cover most of the range (68% within 1 std, 99.7% within 3 std)
+        # Using std=60 to ensure good coverage
+        return torch.round(torch.randn(shape, dtype=torch.float32) * 60).clamp(-128, 127).to(torch.int8)
+
 class i4:    
 
     def __init__(self, std=1):
@@ -78,6 +85,11 @@ class i4:
         mutated_clamped = torch.clamp(mutated, -8, 7)
         return mutated_clamped.to(torch.int8)
 
+    def initializer(self, shape):
+        # int4 range is [-8, 7], so we want to sample across this range
+        # Using std=3 to cover the range (std of ~3 covers ~99.7% of values within [-9, 9])
+        return torch.round(torch.randn(shape, dtype=torch.float32) * 3).clamp(-8, 7).to(torch.int8)
+
 class i2:
     def __init__(self, std=1):
         self.precision = 'i2'
@@ -101,6 +113,11 @@ class i2:
         mutated = torch.round(x + mutations)
         mutated_clamped = torch.clamp(mutated, -2, 1)
         return mutated_clamped.to(torch.int8)
+
+    def initializer(self, shape):
+        # int2 range is [-2, 1], so we want to sample across this range
+        # Using std=1.5 to cover the range (std of ~1.5 covers ~99.7% within [-4.5, 4.5])
+        return torch.round(torch.randn(shape, dtype=torch.float32) * 1.5).clamp(-2, 1).to(torch.int8)
 
 class binary:
     def __init__(self, std=0):

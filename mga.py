@@ -22,10 +22,9 @@ class MGA:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         x, y = x.to(device), y.to(device)
 
-        for _ in range(self.population_size):
-            model = MLP(shapes, activation, output_activation, precision, bias_std, mutation_std, scale_std)
-            model = model.to(device)  # Move model to GPU
-            self.population.append(model)
+        for _ in range(self.population_size): 
+            # Move model to GPU
+            self.population.append(MLP(shapes, activation, output_activation, precision, bias_std, mutation_std, scale_std).to(device=device))
             self.population[-1].evaluate(x, y, f)
 
     def tournament(self, x, y, f, test=False):

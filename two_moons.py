@@ -27,15 +27,15 @@ y_test = torch.FloatTensor(y_test).unsqueeze(1)
 shapes = [2, 64, 64, 1]
 activation = torch.tanh
 output_activation = lambda x: x
-precision = 'i2'
-bias_std = 0.1
-mutation_std = 0.3
+precision = 'i4'
+bias_std = 0.5
+mutation_std = 1
 scale_std = 0.
 
 # Initialize MGA
-population_size = 10
-num_generations = 1000
-mga = MGA(population_size, num_generations, population_size)
+population_size = 5
+num_generations = 3000
+mga = MGA(population_size, num_generations, 2)
 
 # Initialize population
 mga.initialize_population(shapes, activation, output_activation, precision, bias_std, mutation_std, scale_std, x_train, y_train, torch.nn.BCEWithLogitsLoss())
@@ -43,10 +43,10 @@ mga.initialize_population(shapes, activation, output_activation, precision, bias
 # Evolution loop
 best_fitness_history = []
 best_individuals = []
+best_fitness = float('-inf')
 
 for generation in range(num_generations):
     print(f"Generation {generation}")
-    best_fitness = float('-inf')
     for i in range(population_size):
         # Tournament selection and evolution
         fitness, t = mga.tournament(x_train, y_train, torch.nn.BCEWithLogitsLoss())

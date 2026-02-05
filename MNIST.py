@@ -46,16 +46,16 @@ y_test = y_test.to(device)
 shapes = [784, 100, 10]
 activation = torch.tanh
 output_activation = lambda x: x
-precision = 'i2'
-bias_std = 0.1
+precision = 'i4'
+bias_std = 0.5
 mutation_std = 1
-scale_std = 0.1
+scale_std = 0.
 
 # Initialize MGA
-population_size = 100
+population_size = 10
 num_generations = 1000
 BATCH_SIZE = 1000
-mga = MGA(population_size, num_generations, population_size)
+mga = MGA(population_size, num_generations, 2)
 
 # Initialize population
 mga.initialize_population(shapes, activation, output_activation, precision, bias_std, mutation_std, scale_std, x_train, y_train, torch.nn.CrossEntropyLoss())
