@@ -52,7 +52,7 @@ mutation_std = 1
 scale_std = 0.
 
 # Initialize MGA
-population_size = 10
+population_size = 100
 num_generations = 1000
 BATCH_SIZE = 1000
 mga = MGA(population_size, num_generations, 2)

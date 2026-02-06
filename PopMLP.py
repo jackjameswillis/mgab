@@ -32,20 +32,20 @@ class PopMLP(nn.Module):
         self.biases = nn.ParameterList()
         self.scales = nn.ParameterList()
         # Ensure all tensors are created on the correct device
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         
         for i in range(len(shapes)-1):
             # Create weight matrix with specified precision
-            weight_tensor = self.precision.initializer((self.population_size, shapes[i + 1], shapes[i])).to(device=device)
+            weight_tensor = self.precision.initializer((self.population_size, shapes[i + 1], shapes[i])).to(device=self.device)
             self.weights.append(nn.Parameter(weight_tensor, requires_grad=False))
             # Create bias vector with float32 precision
-            bias_tensor = torch.zeros((self.population_size, 1, shapes[i + 1]), device=device)
+            bias_tensor = torch.zeros((self.population_size, 1, shapes[i + 1]), device=self.device)
             #bias_tensor = self.bias_precision.mutate(torch.zeros(shapes[i + 1], device=device))
             self.biases.append(nn.Parameter(bias_tensor, requires_grad=False))
-            scale_tensor = torch.ones((self.population_size, 1, shapes[i + 1]), device=device)
+            scale_tensor = torch.ones((self.population_size, 1, shapes[i + 1]), device=self.device)
             self.scales.append(nn.Parameter(scale_tensor, requires_grad=False))
         
-        self.to(device=device)
+        self.to(device=self.device)
 
     def forward(self, x):
 
@@ -122,15 +122,15 @@ class PopMLP(nn.Module):
 
         self.fitnesses = self.evaluate(x, y, f)
 
-        start = torch.randint(0, self.population_size, (1,)).item()
+        start = torch.randint(0, self.population_size, (1,), device=self.device).item()
 
-        selected = -torch.ones(self.population_size)
+        selected = -torch.ones(self.population_size, device=self.device)
 
-        won = torch.ones(self.population_size).to(torch.bool)
+        won = torch.ones(self.population_size, device=self.device).to(torch.bool)
 
         for i in range(self.population_size):
 
-            shifted_indecies = torch.arange(start + i, start + i + self.population_size) % self.population_size
+            shifted_indecies = torch.arange(start + i, start + i + self.population_size, device=self.device) % self.population_size
                 
             if selected[shifted_indecies[0]] == -1:
 
@@ -156,7 +156,7 @@ class PopMLP(nn.Module):
 
         for k in state.keys():
 
-            mask = torch.rand(state[k].size(0)//2, state[k].size(1), state[k].size(2)) > 0.5
+            mask = torch.rand(state[k].size(0)//2, state[k].size(1), state[k].size(2), device=self.device) > 0.5
 
             state[k][won.logical_not()] = torch.where(mask, state[k][won], state[k][won.logical_not()])
 
