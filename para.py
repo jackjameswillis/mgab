@@ -77,9 +77,21 @@ def celoss(logits, targets):
     # Return mean loss for each network
     return -loss_per_sample.mean(dim=1)
 
+def accuracy(logits, targets):
+
+    logits_flat = logits.reshape(-1, logits.size(-1))  # (networks*batch_size, classes)
+    targets_flat = targets.reshape(-1, targets.size(-1))  # (networks*batch_size, classes)
+
+    acc_per_sample = (logits_flat.argmax(dim=1) == targets_flat.argmax(dim=1)).float()
+
+    acc_per_sample = acc_per_sample.reshape(logits.size(0), logits.size(1))
+
+    return acc_per_sample.mean(dim=1)
+
 # Evolution loop
 for generation in range(num_generations):
     batch_indices = torch.randperm(len(x_train))[:BATCH_SIZE]
     pop_mlp.tournaments(x_train[batch_indices], y_train[batch_indices], celoss, population_size)
-    print(pop_mlp.fitnesses.mean())
+    accs = pop_mlp.evaluate(x_test[:1000], y_test[:1000], accuracy)
+    print(f'Generation: {generation} | Mean: {pop_mlp.fitnesses.mean()} | Max: {pop_mlp.fitnesses.max()} | Test Accuracy Mean: {accs.mean()} | Test Accuracy Max: {accs.max()}')
     
