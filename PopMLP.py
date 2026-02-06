@@ -124,7 +124,7 @@ class PopMLP(nn.Module):
 
         start = torch.randint(0, self.population_size, (1,), device=self.device).item()
 
-        selected = -torch.ones(self.population_size, device=self.device)
+        selected = -torch.ones(self.population_size, device=self.device).to(torch.int)
 
         won = torch.ones(self.population_size, device=self.device).to(torch.bool)
 
@@ -146,11 +146,11 @@ class PopMLP(nn.Module):
 
                 if self.fitnesses[shifted_indecies[0]] >= self.fitnesses[select]:
 
-                    won[select] = 0
+                    won[select] = False
                 
                 else:
                     
-                    won[shifted_indecies[0]] = 0
+                    won[shifted_indecies[0]] = False
     
         state = self.state_dict()
 
@@ -158,7 +158,11 @@ class PopMLP(nn.Module):
 
             mask = torch.rand(state[k].size(0)//2, state[k].size(1), state[k].size(2), device=self.device) > 0.5
 
-            state[k][won.logical_not()] = torch.where(mask, state[k][won], state[k][won.logical_not()])
+            for i, loser in enumerate(selected[won]):
+
+                state[k][loser] = torch.where(mask[i], state[k][selected[loser]], state[k][loser])
+
+            #state[k][won.logical_not()] = torch.where(mask, state[k][won], state[k][won.logical_not()])
 
             if 'weight' in k:
 

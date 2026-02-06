@@ -52,7 +52,7 @@ mutation_std = 1
 scale_std = 0.
 
 # Initialize MGA with PopMLP
-population_size = 1000
+population_size = 100
 num_generations = 1000
 BATCH_SIZE = 1000
 
