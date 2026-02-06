@@ -157,12 +157,13 @@ class PopMLP(nn.Module):
         for k in state.keys():
 
             mask = torch.rand(state[k].size(0)//2, state[k].size(1), state[k].size(2), device=self.device) > 0.5
-
+            '''
             for i, loser in enumerate(selected[won]):
 
                 state[k][loser] = torch.where(mask[i], state[k][selected[loser]], state[k][loser])
+            '''
 
-            #state[k][won.logical_not()] = torch.where(mask, state[k][won], state[k][won.logical_not()])
+            state[k][selected[won]] = torch.where(mask, state[k][selected[won]], state[k][selected[selected[won]]])
 
             if 'weight' in k:
 
