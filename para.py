@@ -59,10 +59,6 @@ BATCH_SIZE = 1000
 # Create PopMLP instance for the population
 pop_mlp = PopMLP(population_size, shapes, activation, output_activation, precision, bias_std, mutation_std, scale_std)
 
-# Initialize best fitness history
-best_fitness_history = []
-best_tests = []
-
 def celoss(logits, targets):
 
     logits_flat = logits.reshape(-1, logits.size(-1))  # (networks*batch_size, classes)
@@ -88,10 +84,48 @@ def accuracy(logits, targets):
 
     return acc_per_sample.mean(dim=1)
 
+best_fitness_history = []
+mean_fitness_history = []
+
+best_tests = []
+mean_test_history = []
+
 # Evolution loop
 for generation in range(num_generations):
     batch_indices = torch.randperm(len(x_train))[:BATCH_SIZE]
     pop_mlp.tournaments(x_train[batch_indices], y_train[batch_indices], celoss, population_size)
     accs = pop_mlp.evaluate(x_test[:1000], y_test[:1000], accuracy)
-    print(f'Generation: {generation} | Mean: {pop_mlp.fitnesses.mean()} | Max: {pop_mlp.fitnesses.max()} | Test Accuracy Mean: {accs.mean()} | Test Accuracy Max: {accs.max()}')
+    if generation % 10 == 0: print(f'Generation: {generation} | Mean: {pop_mlp.fitnesses.mean()} | Max: {pop_mlp.fitnesses.max()} | Test Accuracy Mean: {accs.mean()} | Test Accuracy Max: {accs.max()}')
     
+    # Track metrics
+    best_fitness_history.append(pop_mlp.fitnesses.max().item())
+    mean_fitness_history.append(pop_mlp.fitnesses.mean().item())
+    best_tests.append(accs.max().item())
+    mean_test_history.append(accs.mean().item())
+
+# Plot and save metrics
+plt.figure(figsize=(12, 5))
+
+# Plot fitness history
+plt.subplot(1, 2, 1)
+plt.plot(best_fitness_history)
+plt.plot(mean_fitness_history)
+plt.plot()
+plt.title('Fitness Over Generations')
+plt.xlabel('Generation')
+plt.ylabel('Fitness')
+
+# Plot test accuracy history
+plt.subplot(1, 2, 2)
+plt.plot(best_tests)
+plt.plot(mean_test_history)
+plt.title('Best Test Accuracy Over Generations')
+plt.xlabel('Generation')
+plt.ylabel('Accuracy')
+
+plt.tight_layout()
+plt.savefig('mga_metrics.png')
+plt.close()
+
+print("Metrics plots saved as 'mga_metrics.png'")
+
