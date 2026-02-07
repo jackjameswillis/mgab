@@ -47,8 +47,8 @@ shapes = [784, 100, 10]
 activation = torch.tanh
 output_activation = lambda x: x
 precision = 'i4'
-bias_std = 0.5
-mutation_std = 1
+bias_std = 0.
+mutation_std = torch.pi/20
 scale_std = 0.
 
 # Initialize MGA with PopMLP
