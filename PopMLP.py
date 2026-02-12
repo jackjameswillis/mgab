@@ -47,16 +47,18 @@ class PopMLP(nn.Module):
         
         self.to(device=self.device)
 
-    def forward(self, x):
+    def forward(self, x, batch):
 
         device = next(self.parameters()).device
-        if x.device != device:
-            x = x.to(device)
+        x_ = x[batch]
+        if x_.device != device:
+            x_ = x_.to(device)
         for i in range(len(self.weights)):
-            x = x @ self.precision.cast_from(self.weights[i]).transpose(-1, -2) + self.biases[i]
+            # Proper matrix multiplication with correct tensor shapes
+            x_ = torch.matmul(x_, self.precision.cast_from(self.weights[i][batch]).transpose(-1, -2)) + self.biases[i][batch]
             if i < len(self.weights) - 1:
-                x = self.activation(x)
-        return x
+                x_ = self.activation(x_)
+        return x_
 
     '''
     pop_data: takes input and output data in shapes (batch_size, input_size), and (batch_size, output_size)
@@ -70,9 +72,10 @@ class PopMLP(nn.Module):
 
         return x, y
 
-    def evaluate(self, x, y, f):
+    def evaluate(self, x, y, f, batch):
         x_, y_ = self.pop_data(x, y)
-        return f(self.forward(x_), y_)
+        # Return fitness values for the specified batch
+        return f(self.forward(x_, batch), y_[batch])
     
     def state_dict(self):
         # Return weights and biases with appropriate casting
@@ -116,11 +119,18 @@ class PopMLP(nn.Module):
 
     Then crossover and mutation is performed in parallel
     '''
-    def tournaments(self, x, y, f, deme_size):
+    def tournaments(self, x, y, f, deme_size, pop_batch_size):
 
         deme_size -= 1
 
-        self.fitnesses = self.evaluate(x, y, f)
+        self.fitnesses = torch.zeros(0)
+
+        for i in range(0, self.population_size, pop_batch_size):
+
+            end = min(i + pop_batch_size, self.population_size)
+
+            fitness_batch = self.evaluate(x, y, f, torch.arange(i, end, device=self.device))
+            self.fitnesses = torch.cat([self.fitnesses, fitness_batch.flatten()])
 
         start = torch.randint(0, self.population_size, (1,), device=self.device).item()
 
@@ -130,51 +140,49 @@ class PopMLP(nn.Module):
 
         for i in range(self.population_size):
 
-            shifted_indecies = torch.arange(start + i, start + i + self.population_size, device=self.device) % self.population_size
+            shifted_indices = torch.arange(start + i, start + i + self.population_size, device=self.device) % self.population_size
                 
-            if selected[shifted_indecies[0]] == -1:
+            if selected[shifted_indices[0]] == -1:
 
-                deme = shifted_indecies[1:deme_size]
+                deme = shifted_indices[1:deme_size+1]
 
                 deme = deme[selected[deme] == -1]
 
-                select = deme[torch.randint(0, len(deme), (1,)).item()]
+                if len(deme) > 0:
+                    select = deme[torch.randint(0, len(deme), (1,)).item()]
 
-                selected[shifted_indecies[0]] = select
+                    selected[shifted_indices[0]] = select
 
-                selected[select] = shifted_indecies[0]
+                    selected[select] = shifted_indices[0]
 
-                if self.fitnesses[shifted_indecies[0]] >= self.fitnesses[select]:
+                    if self.fitnesses[shifted_indices[0]] >= self.fitnesses[select]:
 
-                    won[select] = False
-                
-                else:
+                        won[select] = False
                     
-                    won[shifted_indecies[0]] = False
+                    else:
+                        
+                        won[shifted_indices[0]] = False
     
         state = self.state_dict()
 
         for k in state.keys():
 
             mask = torch.rand(state[k].size(0)//2, state[k].size(1), state[k].size(2), device=self.device) > 0.5
-            '''
-            for i, loser in enumerate(selected[won]):
-
-                state[k][loser] = torch.where(mask[i], state[k][selected[loser]], state[k][loser])
-            '''
-
-            state[k][selected[won]] = torch.where(mask, state[k][selected[won]], state[k][selected[selected[won]]])
-
-            if 'weight' in k:
-
-                state[k][won.logical_not()] = self.precision.mutate(state[k][won.logical_not()])
             
-            if 'bias' in k:
-
-                state[k][won.logical_not()] = self.bias_precision.mutate(state[k][won.logical_not()])
+            # Fix the tournament selection logic
+            winners = selected[won]
+            losers = selected[won.logical_not()]
             
-            if 'scale' in k:
-
-                state[k][won.logical_not()] = self.scale_precision.mutate(state[k][won.logical_not()])
+            if len(winners) > 0 and len(losers) > 0:
+                # For each winner-loser pair, perform crossover
+                state[k][winners] = torch.where(mask[:len(winners)], state[k][winners], state[k][losers])
+                
+                # Apply mutation to losers
+                if 'weight' in k:
+                    state[k][losers] = self.precision.mutate(state[k][losers])
+                elif 'bias' in k:
+                    state[k][losers] = self.bias_precision.mutate(state[k][losers])
+                elif 'scale' in k:
+                    state[k][losers] = self.scale_precision.mutate(state[k][losers])
         
         self.load_state_dict(state)

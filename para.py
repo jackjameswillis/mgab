@@ -53,6 +53,7 @@ scale_std = 0.
 
 # Initialize MGA with PopMLP
 population_size = 100
+pop_batch = population_size
 num_generations = 1000
 BATCH_SIZE = 1000
 
@@ -93,8 +94,11 @@ mean_test_history = []
 # Evolution loop
 for generation in range(num_generations):
     batch_indices = torch.randperm(len(x_train))[:BATCH_SIZE]
-    pop_mlp.tournaments(x_train[batch_indices], y_train[batch_indices], celoss, population_size)
-    accs = pop_mlp.evaluate(x_test[:1000], y_test[:1000], accuracy)
+    pop_mlp.tournaments(x_train[batch_indices], y_train[batch_indices], celoss, population_size, pop_batch)
+    accs = torch.ones(0)
+    for i in range(0, population_size, pop_batch):
+        end = min(i + pop_batch, population_size)
+        accs = torch.cat([accs, pop_mlp.evaluate(x_test[:1000], y_test[:1000], accuracy, torch.arange(i, end, device=device)).flatten()])
     if generation % 10 == 0: print(f'Generation: {generation} | Mean: {pop_mlp.fitnesses.mean()} | Max: {pop_mlp.fitnesses.max()} | Test Accuracy Mean: {accs.mean()} | Test Accuracy Max: {accs.max()}')
     
     # Track metrics
