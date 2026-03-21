@@ -12,11 +12,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import precisions as P
+import math
 
 class PopMLP(nn.Module):
 
-    def __init__(self, population_size, shapes, activation=F.relu, output_activation=None, precision='f32',
-                 bias_std=1, mutation_std=1, scale_std=1):
+    def __init__(self, population_size, shapes, activation=F.relu, output_activation=None, w_bits=32):
         
         super(PopMLP, self).__init__()
         
@@ -24,41 +24,62 @@ class PopMLP(nn.Module):
         self.shapes = shapes
         self.activation = activation
         self.output_activation = output_activation
-        self.precision = P.precisions[precision](mutation_std)
-        self.bias_precision = P.precisions['f32'](bias_std)
-        self.scale_precision = P.precisions['f32'](scale_std)
+        self.Q = P.Q(w_bits) if w_bits != 32 else P.f32()
         self.fitnesses = torch.zeros((self.population_size, 1))
         self.weights = nn.ParameterList()
         self.biases = nn.ParameterList()
-        self.scales = nn.ParameterList()
+        self.ranges = []
         # Ensure all tensors are created on the correct device
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         
         for i in range(len(shapes)-1):
+            s = math.sqrt(6/(shapes[i]))
+            if self.Q.bits != 32:
+                weight_tensor = torch.randint(-(2**self.Q.bits)//2, (2**self.Q.bits)//2, (self.population_size, shapes[i + 1], shapes[i]), dtype=torch.int8, device=self.device)
+            else:
+                weight_tensor = torch.rand((self.population_size, shapes[i + 1], shapes[i]), device=self.device)
+                mini, maxi = 0, 1
+                weight_tensor = -s + weight_tensor * 2 * s
             # Create weight matrix with specified precision
-            weight_tensor = self.precision.initializer((self.population_size, shapes[i + 1], shapes[i])).to(device=self.device)
+            #weight_tensor = self.precision.initializer((self.population_size, shapes[i + 1], shapes[i])).to(device=self.device)
             self.weights.append(nn.Parameter(weight_tensor, requires_grad=False))
+            self.ranges.append(s)
             # Create bias vector with float32 precision
             bias_tensor = torch.zeros((self.population_size, 1, shapes[i + 1]), device=self.device)
             #bias_tensor = self.bias_precision.mutate(torch.zeros(shapes[i + 1], device=device))
             self.biases.append(nn.Parameter(bias_tensor, requires_grad=False))
-            scale_tensor = torch.ones((self.population_size, 1, shapes[i + 1]), device=self.device)
-            self.scales.append(nn.Parameter(scale_tensor, requires_grad=False))
         
         self.to(device=self.device)
 
-    def forward(self, x, batch):
+    def forward(self, x, batch, verbose=False):
 
         device = next(self.parameters()).device
         x_ = x[batch]
+        acts = []
         if x_.device != device:
             x_ = x_.to(device)
-        for i in range(len(self.weights)):
-            # Proper matrix multiplication with correct tensor shapes
-            x_ = torch.matmul(x_, self.precision.cast_from(self.weights[i][batch]).transpose(-1, -2)) + self.biases[i][batch]
-            if i < len(self.weights) - 1:
-                x_ = self.activation(x_)
-        return x_
+        with torch.no_grad():
+            for i in range(len(self.weights)):
+                # Proper matrix multiplication with correct tensor shapes
+                x_ = torch.matmul(x_, self.Q.cast_from(self.weights[i][batch], self.ranges[i]).transpose(-1, -2))
+                '''
+                if i < len(self.weights) - 1: 
+                    #x_ = F.batch_norm(x_, running_mean=None, running_var=None, weight=None, bias=None, training=True, momentum=0.1, eps=1e-05)
+                    mean = x_.mean(dim=-1, keepdim=True)
+                    var = x_.var(dim=-1, keepdim=True)
+                    eps =  1e-5
+                    x_ = (x_ - mean) / (var + eps).sqrt()
+                '''
+                x_ =  x_+ self.biases[i][batch]
+                if i < len(self.weights) - 1:
+                    x_ = self.activation(x_)
+                if verbose:
+                    acts += [x_.clone()]
+                # Add batch normalization with no learnable parameters
+                
+            if not verbose: return x_
+
+            return acts
 
     '''
     pop_data: takes input and output data in shapes (batch_size, input_size), and (batch_size, output_size)
@@ -72,10 +93,20 @@ class PopMLP(nn.Module):
 
         return x, y
 
-    def evaluate(self, x, y, f, batch):
-        x_, y_ = self.pop_data(x, y)
-        # Return fitness values for the specified batch
+    def evaluate(self, x, y, f, batch, batch_idxs=None):
+        #if batch_idxs:
+        x_, y_ = x[batch_idxs], y[batch_idxs]
+        #else:
+            #x_, y_ = self.pop_data(x, y)
+            # Return fitness values for the specified batch
         return f(self.forward(x_, batch), y_[batch])
+    
+    def test(self, x, y, batch, metrics):
+        x_, y_ = self.pop_data(x, y)
+        r = []
+        for m in metrics:
+            r.append(m(self.forward(x_, batch), y_[batch]).flatten())
+        return r
     
     def state_dict(self):
         # Return weights and biases with appropriate casting
@@ -85,9 +116,6 @@ class PopMLP(nn.Module):
         
         for i in range(len(self.biases)):
             state_dict[f'biases.{i}'] = self.biases[i].clone()
-
-        for i in range(len(self.scales)):
-            state_dict[f'scales.{i}'] = self.scales[i].clone()
         
         return state_dict
     
@@ -100,15 +128,15 @@ class PopMLP(nn.Module):
         # Clear and rebuild parameters
         self.weights = nn.ParameterList()
         self.biases  = nn.ParameterList()
-        self.scales = nn.ParameterList()
+        self.ranges = []
 
         for key, value in state_dict.items():
             if key.startswith("weights"):
                 self.weights.append(nn.Parameter(value.to(device), requires_grad=False))
+                s = math.sqrt(6/(self.weights[-1].shape[-1]))
+                self.ranges.append(s)
             elif key.startswith("biases"):
                 self.biases.append(nn.Parameter(value.to(device), requires_grad=False))
-            elif key.startswith("scales"):
-                self.scales.append(nn.Parameter(value.to(device), requires_grad=False))
     
     '''
     Carries out tournaments between individuals so that every individual participates in a tournament.
@@ -119,24 +147,25 @@ class PopMLP(nn.Module):
 
     Then crossover and mutation is performed in parallel
     '''
-    def tournaments(self, x, y, f, deme_size, pop_batch_size):
+    def tournaments(self, x, y, f, bs, deme_size, pop_batch_size, crosstype='uni', bias_std=0.01, mutation_rate=0.001, version='local-uniform', dist_bs=False):
 
         deme_size -= 1
-
-        self.fitnesses = torch.zeros(0)
-
-        for i in range(0, self.population_size, pop_batch_size):
-
-            end = min(i + pop_batch_size, self.population_size)
-
-            fitness_batch = self.evaluate(x, y, f, torch.arange(i, end, device=self.device))
-            self.fitnesses = torch.cat([self.fitnesses, fitness_batch.flatten()])
 
         start = torch.randint(0, self.population_size, (1,), device=self.device).item()
 
         selected = -torch.ones(self.population_size, device=self.device).to(torch.int)
 
         won = torch.ones(self.population_size, device=self.device).to(torch.bool)
+
+        if dist_bs: 
+            
+            batch_idxs = torch.zeros((self.population_size, bs), device=self.device, dtype=torch.long)
+
+        else:
+            #b = torch.randint(0, len(x), (bs,), device=self.device)
+            b = torch.randperm(len(x))[:bs]
+
+            batch_idxs = torch.stack([b]*self.population_size, dim=0)
 
         for i in range(self.population_size):
 
@@ -148,41 +177,62 @@ class PopMLP(nn.Module):
 
                 deme = deme[selected[deme] == -1]
 
-                if len(deme) > 0:
-                    select = deme[torch.randint(0, len(deme), (1,)).item()]
+                select = deme[torch.randint(0, len(deme), (1,)).item()]
 
-                    selected[shifted_indices[0]] = select
+                selected[shifted_indices[0]] = select
 
-                    selected[select] = shifted_indices[0]
+                selected[select] = shifted_indices[0]
 
-                    if self.fitnesses[shifted_indices[0]] >= self.fitnesses[select]:
-
-                        won[select] = False
+                if dist_bs:
                     
-                    else:
+                    batch_idxs[i] = torch.randint(0, len(x), (bs,), device=self.device)
+
+                    batch_idxs[selected[i]] = batch_idxs[i]
+
+        self.fitnesses = torch.zeros(0, device=self.device)
+
+        for i in range(0, self.population_size, pop_batch_size):
+
+            end = min(i + pop_batch_size, self.population_size)
+            fitness_batch = self.evaluate(x, y, f, torch.arange(i, end, device=self.device), batch_idxs)
+            self.fitnesses = torch.cat([self.fitnesses, fitness_batch.flatten()])
+
+        for i in range(self.population_size):
+
+            if self.fitnesses[i] >= self.fitnesses[selected[i]]:
+
+                won[selected[i]] = False
+
+                won[i] = True
+                    
+            else:
                         
-                        won[shifted_indices[0]] = False
+                won[i] = False
+
+                won[selected[i]] = True
     
         state = self.state_dict()
 
         for k in state.keys():
 
-            mask = torch.rand(state[k].size(0)//2, state[k].size(1), state[k].size(2), device=self.device) > 0.5
-            
-            # Fix the tournament selection logic
-            winners = selected[won]
-            losers = selected[won.logical_not()]
-            
-            if len(winners) > 0 and len(losers) > 0:
-                # For each winner-loser pair, perform crossover
-                state[k][winners] = torch.where(mask[:len(winners)], state[k][winners], state[k][losers])
+            losers = selected[won]
+            winners = selected[won.logical_not()]
+
+            if crosstype == 'uni':
+
+                mask = torch.rand(state[k].size(0)//2, state[k].size(1), state[k].size(2), device=self.device) > 0.5
                 
-                # Apply mutation to losers
-                if 'weight' in k:
-                    state[k][losers] = self.precision.mutate(state[k][losers])
-                elif 'bias' in k:
-                    state[k][losers] = self.bias_precision.mutate(state[k][losers])
-                elif 'scale' in k:
-                    state[k][losers] = self.scale_precision.mutate(state[k][losers])
+                # For each winner-loser pair, perform crossover
+                state[k][losers] = torch.where(mask, state[k][winners], state[k][losers])
+
+            elif crosstype == 'asexual':
+                
+                state[k][losers] = state[k][winners].clone()
+               
+            # Apply mutation to losers
+            if 'weight' in k:
+                state[k][losers] = self.Q.mutate(state[k][losers], mutation_rate, version)
+            elif 'bias' in k:
+                state[k][losers] = P.f32().mutate(state[k][losers], bias_std)
         
         self.load_state_dict(state)

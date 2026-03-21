@@ -30,6 +30,14 @@ y_train = torch.FloatTensor(y_train)
 x_test = torch.FloatTensor(X_test)
 y_test = torch.FloatTensor(y_test)
 
+xm = x_train.mean()
+xstd = x_train.std()
+
+# Normalize the input data
+
+x_train = (x_train - xm) / xstd
+x_test = (x_test - xm) / xstd
+
 print(f"Training data shape: {x_train.shape}")
 print(f"Test data shape: {x_test.shape}")
 
@@ -43,22 +51,21 @@ x_test = x_test.to(device)
 y_test = y_test.to(device)
 
 # Define network parameters for MNIST
-shapes = [784, 100, 10]
-activation = torch.tanh
+shapes = [784, 64, 10]
+activation = torch.relu
 output_activation = lambda x: x
-precision = 'i4'
-bias_std = 0.
-mutation_std = torch.pi/20
-scale_std = 0.
+w_bits = 32
+mr = 0.001
+bias_std = 0.01
 
 # Initialize MGA with PopMLP
-population_size = 100
+population_size = 1000
 pop_batch = population_size
-num_generations = 1000
-BATCH_SIZE = 1000
+num_generations = 5000
+BATCH_SIZE = 64
 
 # Create PopMLP instance for the population
-pop_mlp = PopMLP(population_size, shapes, activation, output_activation, precision, bias_std, mutation_std, scale_std)
+pop_mlp = PopMLP(population_size, shapes, activation, output_activation, w_bits)
 
 def celoss(logits, targets):
 
@@ -85,51 +92,86 @@ def accuracy(logits, targets):
 
     return acc_per_sample.mean(dim=1)
 
-best_fitness_history = []
-mean_fitness_history = []
+metrics = {
+    "train":{
+        "loss":[],
+        "accuracy":[]
+    },
+    "test":{
+        "loss":[],
+        "accuracy":[]
+    }
+}
 
-best_tests = []
-mean_test_history = []
-
+import wandb
+wandb.init(project="mga-small-batch")
+demesize = population_size
 # Evolution loop
 for generation in range(num_generations):
+    '''
+    if generation == 5000 and generation != 0: 
+        mutation_std = mutation_std/10
+        pop_mlp.set_precision_m(mutation_std)
+    '''
+    if generation % 1000 == 0 and generation != 0: mr *= 0.9
+    #if generation % 2500 == 0 and generation != 0: mutation_std = mutation_std/10
     batch_indices = torch.randperm(len(x_train))[:BATCH_SIZE]
-    pop_mlp.tournaments(x_train[batch_indices], y_train[batch_indices], celoss, population_size, pop_batch)
-    accs = torch.ones(0)
-    for i in range(0, population_size, pop_batch):
-        end = min(i + pop_batch, population_size)
-        accs = torch.cat([accs, pop_mlp.evaluate(x_test[:1000], y_test[:1000], accuracy, torch.arange(i, end, device=device)).flatten()])
-    if generation % 10 == 0: print(f'Generation: {generation} | Mean: {pop_mlp.fitnesses.mean()} | Max: {pop_mlp.fitnesses.max()} | Test Accuracy Mean: {accs.mean()} | Test Accuracy Max: {accs.max()}')
-    
-    # Track metrics
-    best_fitness_history.append(pop_mlp.fitnesses.max().item())
-    mean_fitness_history.append(pop_mlp.fitnesses.mean().item())
-    best_tests.append(accs.max().item())
-    mean_test_history.append(accs.mean().item())
+    pop_mlp.tournaments(x_train, 
+                        y_train, 
+                        celoss, 
+                        BATCH_SIZE,
+                        demesize, 
+                        pop_batch,
+                        'uni',
+                        mutation_rate=mr,
+                        bias_std=bias_std,
+                        version='local-uniform',
+                        dist_bs=False)
+    if generation % 10 == 0:
+        train_accs = torch.zeros(0, device=device)
+        train_loss = torch.zeros(0, device=device)
+        for i in range(0, population_size, pop_batch):
+            end = min(i + pop_batch, population_size)
+            a, l = pop_mlp.test(x_train[batch_indices], 
+                                y_train[batch_indices], 
+                                torch.arange(i, end, device=device), 
+                                [accuracy, celoss])
+            train_accs = torch.cat([train_accs, a])
+            train_loss = torch.cat([train_loss, l])
 
-# Plot and save metrics
-plt.figure(figsize=(12, 5))
+        test_accs = torch.zeros(0, device=device)
+        test_loss = torch.zeros(0, device=device)
+        for i in range(0, population_size, pop_batch):
+            end = min(i + pop_batch, population_size)
+            a, l = pop_mlp.test(x_test[:1000], 
+                                y_test[:1000], 
+                                torch.arange(i, end, device=device), 
+                                [accuracy, celoss])
+            test_accs = torch.cat([test_accs, a])
+            test_loss = torch.cat([test_loss, l])
 
-# Plot fitness history
-plt.subplot(1, 2, 1)
-plt.plot(best_fitness_history)
-plt.plot(mean_fitness_history)
-plt.plot()
-plt.title('Fitness Over Generations')
-plt.xlabel('Generation')
-plt.ylabel('Fitness')
+        # Track mean and max of the metrics
+        train_loss_mean = torch.mean(train_loss).item()
+        train_loss_max = torch.max(train_loss).item()
+        test_loss_mean = torch.mean(test_loss).item()
+        test_loss_max = torch.max(test_loss).item()
+        train_acc_mean = torch.mean(train_accs).item()
+        train_acc_max = torch.max(train_accs).item()
+        test_acc_mean = torch.mean(test_accs).item()
+        test_acc_max = torch.max(test_accs).item()
 
-# Plot test accuracy history
-plt.subplot(1, 2, 2)
-plt.plot(best_tests)
-plt.plot(mean_test_history)
-plt.title('Best Test Accuracy Over Generations')
-plt.xlabel('Generation')
-plt.ylabel('Accuracy')
+        # Log to Weights & Biases
 
-plt.tight_layout()
-plt.savefig('mga_metrics.png')
-plt.close()
+        wandb.log({
+            "train_loss_mean": train_loss_mean,
+            "train_loss_max": train_loss_max,
+            "test_loss_mean": test_loss_mean,
+            "test_loss_max": test_loss_max,
+            "train_acc_mean": train_acc_mean,
+            "train_acc_max": train_acc_max,
+            "test_acc_mean": test_acc_mean,
+            "test_acc_max": test_acc_max
+        })
+        print(f'Generation: {generation}')
 
-print("Metrics plots saved as 'mga_metrics.png'")
-
+torch.save(pop_mlp.state_dict(), 'longpop.npy')

@@ -22,6 +22,12 @@ X_train, X_test, y_train, y_test = train_test_split(X, y_onehot, test_size=1/7, 
 # Convert to torch tensors
 x_test = torch.FloatTensor(X_test)
 y_test = torch.FloatTensor(y_test)
+x_train = torch.FloatTensor(X_train)
+
+xm = x_train.mean()
+xstd = x_train.std()
+
+x_test = (x_test - xm) / xstd
 
 # Check for GPU availability and move tensors to GPU if available
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -31,21 +37,21 @@ x_test = x_test.to(device)
 y_test = y_test.to(device)
 
 # Define network parameters (same as in para.py)
-shapes = [784, 1000, 10]
+shapes = [784, 64, 10]
 activation = torch.relu
 output_activation = lambda x: x
-precision = 'i4'
+w_bits = 32
 bias_std = 0.
 mutation_std = torch.pi/20
 scale_std = 0.
 
 # Load the saved population
 print("Loading saved population...")
-population_size = 500
-pop_mlp = PopMLP(population_size, shapes, activation, output_activation, precision, bias_std, mutation_std, scale_std)
+population_size = 100
+pop_mlp = PopMLP(population_size, shapes, activation, output_activation, w_bits)
 
 # Load state dict from file
-state_dict = torch.load('final_pop.npy', map_location=device)
+state_dict = torch.load('longpop.npy', map_location=device)
 pop_mlp.load_state_dict(state_dict)
 
 print("Population loaded successfully.")
@@ -60,14 +66,24 @@ def accuracy(logits, targets):
     acc_per_sample = acc_per_sample.reshape(logits.size(0), logits.size(1))
 
     return acc_per_sample.mean(dim=1)
-
+pop_batch=population_size//10
 # Run forward pass on test dataset
 print("Running forward pass...")
 accuracies = torch.zeros(population_size).to(device=device)
 with torch.no_grad():
-    for i in range(10):
-        acc = pop_mlp.evaluate(x_test[i*1000:(i + 1)*1000], y_test[i*1000:(i + 1)*1000], accuracy)
-        accuracies += acc/10
+    
+    # Process test data in batches to save memory
+    for i in range(0, len(x_test), 1000):
+        x_batch = x_test[i:i+1000]
+        y_batch = y_test[i:i+1000]
+
+        # Evaluate all networks on this batch
+        accs = torch.ones(0, device=device)
+        for j in range(0, population_size, pop_batch):
+            end = min(j + pop_batch, population_size)
+            batch_accs = pop_mlp.evaluate(x_batch, y_batch, accuracy, torch.arange(j, end, device=device), torch.stack([torch.arange(0, len(x_batch))]*population_size, dim=0)).flatten()
+            accs = torch.cat([accs, batch_accs])
+        accuracies += accs / (len(x_test) // 1000)
 
 # Report metrics
 print(f"Number of individuals in population: {population_size}")
