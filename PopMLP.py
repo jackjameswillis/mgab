@@ -189,13 +189,13 @@ class PopMLP(nn.Module):
 
                     batch_idxs[selected[i]] = batch_idxs[i]
 
-        self.fitnesses = torch.zeros(0, device=self.device)
+        self.fitnesses = torch.zeros(self.population_size, device=self.device)
 
         for i in range(0, self.population_size, pop_batch_size):
 
             end = min(i + pop_batch_size, self.population_size)
             fitness_batch = self.evaluate(x, y, f, torch.arange(i, end, device=self.device), batch_idxs)
-            self.fitnesses = torch.cat([self.fitnesses, fitness_batch.flatten()])
+            self.fitnesses[i:end] = fitness_batch.flatten()
 
         for i in range(self.population_size):
 

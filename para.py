@@ -59,7 +59,7 @@ mr = 0.001
 bias_std = 0.01
 
 # Initialize MGA with PopMLP
-population_size = 1000
+population_size = 100
 pop_batch = population_size
 num_generations = 5000
 BATCH_SIZE = 64
@@ -128,27 +128,27 @@ for generation in range(num_generations):
                         version='local-uniform',
                         dist_bs=False)
     if generation % 10 == 0:
-        train_accs = torch.zeros(0, device=device)
-        train_loss = torch.zeros(0, device=device)
+        train_accs = torch.zeros(population_size, device=device)
+        train_loss = torch.zeros(population_size, device=device)
         for i in range(0, population_size, pop_batch):
             end = min(i + pop_batch, population_size)
             a, l = pop_mlp.test(x_train[batch_indices], 
                                 y_train[batch_indices], 
                                 torch.arange(i, end, device=device), 
                                 [accuracy, celoss])
-            train_accs = torch.cat([train_accs, a])
-            train_loss = torch.cat([train_loss, l])
+            train_accs[i:end] = a
+            train_loss[i:end] = l
 
-        test_accs = torch.zeros(0, device=device)
-        test_loss = torch.zeros(0, device=device)
+        test_accs = torch.zeros(population_size, device=device)
+        test_loss = torch.zeros(population_size, device=device)
         for i in range(0, population_size, pop_batch):
             end = min(i + pop_batch, population_size)
             a, l = pop_mlp.test(x_test[:1000], 
                                 y_test[:1000], 
                                 torch.arange(i, end, device=device), 
                                 [accuracy, celoss])
-            test_accs = torch.cat([test_accs, a])
-            test_loss = torch.cat([test_loss, l])
+            test_accs[i:end] = a
+            test_loss[i:end] = l
 
         # Track mean and max of the metrics
         train_loss_mean = torch.mean(train_loss).item()
