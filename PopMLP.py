@@ -147,7 +147,10 @@ class PopMLP(nn.Module):
 
     Then crossover and mutation is performed in parallel
     '''
-    def tournaments(self, x, y, f, bs, deme_size, pop_batch_size, crosstype='uni', bias_std=0.01, mutation_rate=0.001, version='local-uniform', dist_bs=False):
+    def tournaments(self, x, y, f, bs, deme_size, pop_batch_size, 
+                    crosstype='uni', bias_std=0.01, mutation_rate=0.001, 
+                    version='local-uniform', dist_bs=False, dynamic_mut_scale=0.0,
+                    hill_iters=0):
 
         deme_size -= 1
 
@@ -228,11 +231,60 @@ class PopMLP(nn.Module):
             elif crosstype == 'asexual':
                 
                 state[k][losers] = state[k][winners].clone()
-               
-            # Apply mutation to losers
-            if 'weight' in k:
-                state[k][losers] = self.Q.mutate(state[k][losers], mutation_rate, version)
-            elif 'bias' in k:
-                state[k][losers] = P.f32().mutate(state[k][losers], bias_std)
         
+        if not hill_iters:
+            for k in state.keys():
+                # Apply mutation to losers
+                if not dynamic_mut_scale:
+                    if 'weight' in k:
+                        state[k][losers] = self.Q.mutate(state[k][losers], mutation_rate, version)
+                    elif 'bias' in k:
+                        state[k][losers] = P.f32().mutate(state[k][losers], bias_std)
+            
+                else:
+                    sim = 1 - (torch.sum((state[k][winners] - state[k][losers])**2) / (1e-4 + torch.sum(state[k][winners]**2)))
+                    if 'weight' in k:
+                        
+                        adap = mutation_rate * (1 - dynamic_mut_scale*(1 - sim))
+
+                        state[k][losers] = self.Q.mutate(state[k][losers], adap, version)
+
+                    elif 'bias' in k:
+
+                        adap = bias_std * (1 - dynamic_mut_scale*(1 - sim))
+
+                        state[k][losers] = P.f32().mutate(state[k][losers], adap)
+        else:
+            for i in range(hill_iters):
+                fitnesses = torch.zeros(self.population_size, device=self.device)
+
+                for i in range(0, self.population_size, pop_batch_size):
+
+                    end = min(i + pop_batch_size, self.population_size)
+                    fitness_batch = self.evaluate(x, y, f, torch.arange(i, end, device=self.device), batch_idxs)
+                    fitnesses[i:end] = fitness_batch.flatten()
+                
+                state = self.state_dict()
+
+                mut_state = self.state_dict()
+
+                for k in state.keys():
+                    if 'weight' in k:
+                        mut_state[k] = self.Q.mutate(mut_state[k], mutation_rate, version)
+                    elif 'bias' in k:
+                        mut_state[k] = P.f32().mutate(state[k], bias_std)
+                self.load_state_dict(mut_state)
+
+                mut_fitnesses = torch.zeros(self.population_size, device=self.device)
+
+                for i in range(0, self.population_size, pop_batch_size):
+
+                    end = min(i + pop_batch_size, self.population_size)
+                    fitness_batch = self.evaluate(x, y, f, torch.arange(i, end, device=self.device), batch_idxs)
+                    mut_fitnesses[i:end] = fitness_batch.flatten()
+
+                for k in state.keys():
+                    state[k][losers][mut_fitnesses[losers] > fitnesses[losers]] = mut_state[k][losers][mut_fitnesses[losers] > fitnesses[losers]]
+
+                self.load_state_dict(state)
         self.load_state_dict(state)

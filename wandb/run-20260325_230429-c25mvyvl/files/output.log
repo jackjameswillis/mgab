@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "/home/jjw/mgab/para.py", line 122, in <module>
+    pop_mlp.tournaments(x_train,
+  File "/home/jjw/mgab/PopMLP.py", line 287, in tournaments
+    state[k] = torch.where(mut_fitnesses > fitnesses, mut_state[k], state[k])
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: The size of tensor a (100) must match the size of tensor b (784) at non-singleton dimension 2

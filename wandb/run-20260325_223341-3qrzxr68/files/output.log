@@ -1,0 +1,14 @@
+Traceback (most recent call last):
+  File "/home/jjw/mgab/para.py", line 114, in <module>
+    successful, total = pop_mlp.hillclimb(x_train, y_train, celoss, batch_indices, mr, bias_std)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jjw/mgab/PopMLP.py", line 272, in hillclimb
+    current_fitness = self.evaluate(x, y, f, torch.arange(population_size, device=device), batch_idxs)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jjw/mgab/PopMLP.py", line 102, in evaluate
+    return f(self.forward(x_, batch), y_[batch])
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jjw/mgab/PopMLP.py", line 57, in forward
+    x_ = x[batch]
+         ~^^^^^^^
+IndexError: index 64 is out of bounds for dimension 0 with size 64

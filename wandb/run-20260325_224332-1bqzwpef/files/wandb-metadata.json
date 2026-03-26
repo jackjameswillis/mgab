@@ -1,0 +1,17 @@
+{
+  "os": "Linux-6.17.0-19-generic-x86_64-with-glibc2.39",
+  "python": "CPython 3.12.3",
+  "startedAt": "2026-03-25T22:43:32.041010Z",
+  "program": "/home/jjw/mgab/para.py",
+  "codePath": "para.py",
+  "codePathLocal": "para.py",
+  "git": {
+    "remote": "https://github.com/jackjameswillis/mgab.git",
+    "commit": "5ceb6d179d0e4036f8ca99a70b476468788c6738"
+  },
+  "email": "willis.jack.james@gmail.com",
+  "root": "/home/jjw/mgab",
+  "host": "jjwhp",
+  "executable": "/home/jjw/mgab/venv/bin/python",
+  "writerId": "t82vrz63v84o0doku8trp8etc26pedbl"
+}
