@@ -62,7 +62,7 @@ adap = 0.0
 # Initialize MGA with PopMLP
 population_size = 1000
 pop_batch = population_size
-num_generations = 5000
+num_generations = 1000
 BATCH_SIZE = 64
 hill_iters = 0
 
