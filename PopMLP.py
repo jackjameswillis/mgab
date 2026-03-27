@@ -16,7 +16,7 @@ import math
 
 class PopMLP(nn.Module):
 
-    def __init__(self, population_size, shapes, activation=F.relu, output_activation=None, w_bits=32):
+    def __init__(self, population_size, shapes, activation=F.relu, output_activation=None, w_bits=32, r='scale'):
         
         super(PopMLP, self).__init__()
         
@@ -29,6 +29,7 @@ class PopMLP(nn.Module):
         self.weights = nn.ParameterList()
         self.biases = nn.ParameterList()
         self.ranges = []
+        self.r = r
         # Ensure all tensors are created on the correct device
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         
@@ -43,7 +44,10 @@ class PopMLP(nn.Module):
             # Create weight matrix with specified precision
             #weight_tensor = self.precision.initializer((self.population_size, shapes[i + 1], shapes[i])).to(device=self.device)
             self.weights.append(nn.Parameter(weight_tensor, requires_grad=False))
-            self.ranges.append(s)
+            if r=='scale': 
+                self.ranges.append(s)
+            elif r=='linear':
+                self.ranges.append(0.0)
             # Create bias vector with float32 precision
             bias_tensor = torch.zeros((self.population_size, 1, shapes[i + 1]), device=self.device)
             #bias_tensor = self.bias_precision.mutate(torch.zeros(shapes[i + 1], device=device))
@@ -133,7 +137,10 @@ class PopMLP(nn.Module):
         for key, value in state_dict.items():
             if key.startswith("weights"):
                 self.weights.append(nn.Parameter(value.to(device), requires_grad=False))
-                s = math.sqrt(6/(self.weights[-1].shape[-1]))
+                if self.r=='scale':
+                    s = math.sqrt(6/(self.weights[-1].shape[-1]))
+                elif self.r == 'linear':
+                    s = 0.0
                 self.ranges.append(s)
             elif key.startswith("biases"):
                 self.biases.append(nn.Parameter(value.to(device), requires_grad=False))

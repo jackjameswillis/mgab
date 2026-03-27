@@ -1,0 +1,28 @@
+{
+  "os": "Linux-6.17.0-19-generic-x86_64-with-glibc2.39",
+  "python": "CPython 3.12.3",
+  "startedAt": "2026-03-27T13:19:55.043532Z",
+  "program": "/home/jjw/mgab/para.py",
+  "codePath": "para.py",
+  "codePathLocal": "para.py",
+  "git": {
+    "remote": "https://github.com/jackjameswillis/mgab.git",
+    "commit": "b38b4cf65eaeb874c2edd0f9f75ee81db482f5ce"
+  },
+  "email": "willis.jack.james@gmail.com",
+  "root": "/home/jjw/mgab",
+  "host": "jjwhp",
+  "executable": "/home/jjw/mgab/venv/bin/python",
+  "cpu_count": 4,
+  "cpu_count_logical": 4,
+  "disk": {
+    "/": {
+      "total": "243885932544",
+      "used": "110468702208"
+    }
+  },
+  "memory": {
+    "total": "8195129344"
+  },
+  "writerId": "h8x2xeyvyx79scrk22uuq70ndb1a5t6z"
+}

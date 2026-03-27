@@ -54,20 +54,20 @@ y_test = y_test.to(device)
 shapes = [784, 64, 10]
 activation = torch.relu
 output_activation = lambda x: x
-w_bits = 32
+w_bits = 4
 mr = 0.001
 bias_std = 0.01
 adap = 0.0
 
 # Initialize MGA with PopMLP
-population_size = 100
+population_size = 1000
 pop_batch = population_size
 num_generations = 5000
 BATCH_SIZE = 64
 hill_iters = 0
 
 # Create PopMLP instance for the population
-pop_mlp = PopMLP(population_size, shapes, activation, output_activation, w_bits)
+pop_mlp = PopMLP(population_size, shapes, activation, output_activation, w_bits, 'linear')
 
 def celoss(logits, targets):
 
@@ -106,7 +106,7 @@ metrics = {
 }
 
 import wandb
-wandb.init(project="mga-adaptive-mutations")
+wandb.init(project="mga-defeat-deceit")
 demesize = population_size
 # Evolution loop
 for generation in range(num_generations):

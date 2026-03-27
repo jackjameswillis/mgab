@@ -62,7 +62,7 @@ class Q:
         
         self.bits = bits
 
-    def cast_from(self, x, r):
+    def cast_from(self, x, r=0.0):
 
         try:
 
@@ -79,10 +79,16 @@ class Q:
         except:
 
             raise ValueError("range must be float")
+        
+        if r:
 
-        mini, maxi = -(2**self.bits)//2, (2**self.bits)//2 - 1
+            mini, maxi = -(2**self.bits)//2, (2**self.bits)//2 - 1
 
-        return -r + (x.to(torch.float32) - mini) * 2 * r/(maxi - mini)
+            return -r + (x.to(torch.float32) - mini) * 2 * r/(maxi - mini)
+
+        else:
+
+            return x.to(torch.float32)
     
     '''
     Selects a number of elements to mutate according to mutation rate m, and returns x but mutated at selected indexes

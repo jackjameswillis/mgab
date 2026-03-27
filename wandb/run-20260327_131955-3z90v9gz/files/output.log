@@ -1,0 +1,17 @@
+Generation: 0
+Traceback (most recent call last):
+  File "/home/jjw/mgab/para.py", line 122, in <module>
+    pop_mlp.tournaments(x_train,
+  File "/home/jjw/mgab/PopMLP.py", line 207, in tournaments
+    fitness_batch = self.evaluate(x, y, f, torch.arange(i, end, device=self.device), batch_idxs)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jjw/mgab/PopMLP.py", line 106, in evaluate
+    return f(self.forward(x_, batch), y_[batch])
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jjw/mgab/PopMLP.py", line 65, in forward
+    with torch.no_grad():
+         ^^^^^^^^^^^^^^^
+  File "/home/jjw/mgab/venv/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 167, in __new__
+    def __new__(cls, orig_func: F | None = None) -> Self | F:  # type: ignore[misc]
+
+KeyboardInterrupt
