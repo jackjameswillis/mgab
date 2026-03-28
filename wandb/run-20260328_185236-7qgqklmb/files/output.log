@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/home/jjw/mgab/para.py", line 117, in <module>
+    pop_mlp.tournaments(x_train,
+  File "/home/jjw/mgab/PopMLP.py", line 247, in tournaments
+    state[k][losers] = self.Q.mutate(state[k][losers], mutation_rate, version)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jjw/mgab/precisions.py", line 96, in mutate
+    def mutate(self, x, m, version='local-uniform'):
+
+KeyboardInterrupt

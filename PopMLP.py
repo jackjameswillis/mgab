@@ -154,7 +154,7 @@ class PopMLP(nn.Module):
 
     Then crossover and mutation is performed in parallel
     '''
-    def tournaments(self, x, y, f, bs, deme_size, pop_batch_size, 
+    def tournaments(self, x, y, f, bidxs, deme_size, pop_batch_size, 
                     crosstype='uni', bias_std=0.01, mutation_rate=0.001, 
                     version='local-uniform', dist_bs=False, dynamic_mut_scale=0.0,
                     hill_iters=0):
@@ -169,13 +169,13 @@ class PopMLP(nn.Module):
 
         if dist_bs: 
             
-            batch_idxs = torch.zeros((self.population_size, bs), device=self.device, dtype=torch.long)
+            batch_idxs = torch.zeros((self.population_size, len(bidxs)), device=self.device, dtype=torch.long)
 
         else:
             #b = torch.randint(0, len(x), (bs,), device=self.device)
-            b = torch.randperm(len(x))[:bs]
+            #b = torch.randperm(len(x))[:len(bidxs)]
 
-            batch_idxs = torch.stack([b]*self.population_size, dim=0)
+            batch_idxs = torch.stack([bidxs]*self.population_size, dim=0)
 
         for i in range(self.population_size):
 
@@ -195,7 +195,7 @@ class PopMLP(nn.Module):
 
                 if dist_bs:
                     
-                    batch_idxs[i] = torch.randint(0, len(x), (bs,), device=self.device)
+                    batch_idxs[i] = torch.randint(0, len(x), (len(bidxs),), device=self.device)
 
                     batch_idxs[selected[i]] = batch_idxs[i]
 

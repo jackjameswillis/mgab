@@ -1,0 +1,42 @@
+_wandb:
+    value:
+        cli_version: 0.25.1
+        e:
+            szvqpeo9wroafej0c4kclvdjde4yrc75:
+                codePath: para.py
+                codePathLocal: para.py
+                cpu_count: 4
+                cpu_count_logical: 4
+                disk:
+                    /:
+                        total: "243885932544"
+                        used: "117716242432"
+                email: willis.jack.james@gmail.com
+                executable: /home/jjw/mgab/venv/bin/python
+                git:
+                    commit: e1f0c0497fbbe81f7f69041f05a0c1abaa7d8c33
+                    remote: https://github.com/jackjameswillis/mgab.git
+                host: jjwhp
+                memory:
+                    total: "8195133440"
+                os: Linux-6.17.0-19-generic-x86_64-with-glibc2.39
+                program: /home/jjw/mgab/para.py
+                python: CPython 3.12.3
+                root: /home/jjw/mgab
+                startedAt: "2026-03-28T18:52:36.915012Z"
+                writerId: szvqpeo9wroafej0c4kclvdjde4yrc75
+        m: []
+        python_version: 3.12.3
+        t:
+            "1":
+                - 1
+                - 5
+                - 53
+            "2":
+                - 1
+                - 5
+                - 53
+            "4": 3.12.3
+            "5": 0.25.1
+            "12": 0.25.1
+            "13": linux-x86_64

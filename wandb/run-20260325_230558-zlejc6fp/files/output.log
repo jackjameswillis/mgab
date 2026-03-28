@@ -1,7 +1,0 @@
-Traceback (most recent call last):
-  File "/home/jjw/mgab/para.py", line 122, in <module>
-    pop_mlp.tournaments(x_train,
-  File "/home/jjw/mgab/PopMLP.py", line 287, in tournaments
-    state[k][mut_fitnesses > fitnesses] = mut_state[k]
-    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
-RuntimeError: shape mismatch: value tensor of shape [100, 64, 784] cannot be broadcast to indexing result of shape [53, 64, 784]

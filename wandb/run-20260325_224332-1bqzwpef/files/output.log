@@ -1,7 +1,0 @@
-Traceback (most recent call last):
-  File "/home/jjw/mgab/para.py", line 115, in <module>
-    successful, total = pop_mlp.hillclimb(x_train, y_train, celoss, batch_indices, mr, bias_std)
-                        ^^^^^^^^^^^^^^^^^
-  File "/home/jjw/mgab/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1968, in __getattr__
-    raise AttributeError(
-AttributeError: 'PopMLP' object has no attribute 'hillclimb'

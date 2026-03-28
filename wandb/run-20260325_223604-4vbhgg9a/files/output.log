@@ -1,8 +1,0 @@
-Traceback (most recent call last):
-  File "/home/jjw/mgab/para.py", line 115, in <module>
-    successful, total = pop_mlp.hillclimb(x_train, y_train, celoss, batch_indices, mr, bias_std)
-                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/jjw/mgab/PopMLP.py", line 318, in hillclimb
-    self.weights[layer_idx][i] = new_weights[layer_idx][i]
-    ~~~~~~~~~~~~~~~~~~~~~~~^^^
-RuntimeError: a view of a leaf Variable that requires grad is being used in an in-place operation.
