@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "/home/jjw/mgab/para.py", line 117, in <module>
+    pop_mlp.tournaments(x_train,
+TypeError: PopMLP.tournaments() got an unexpected keyword argument 'dist_bs'

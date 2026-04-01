@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "/home/jjw/mgab/para.py", line 117, in <module>
+    pop_mlp.tournaments(x_train,
+  File "/home/jjw/mgab/PopMLP.py", line 174, in tournaments
+    for i in range(0, self.population_size, pop_batch_size):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: 'str' object cannot be interpreted as an integer

@@ -1,0 +1,1 @@
+{"test_loss_max":-0.768336296081543,"test_acc_max":0.7590000033378601,"train_loss_mean":-0.7245545983314514,"_timestamp":1.7750602453635228e+09,"test_acc_mean":0.7498749494552612,"train_acc_max":0.796875,"test_loss_mean":-0.7803944945335388,"_step":1,"_wandb":{"runtime":60},"_runtime":60,"train_acc_mean":0.7685546875,"train_loss_max":-0.7003141641616821}

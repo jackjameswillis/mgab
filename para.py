@@ -118,15 +118,13 @@ for generation in range(num_generations):
                         y_train, 
                         celoss, 
                         bidxs,
+                        'Ring',
                         demesize, 
                         pop_batch,
                         'uni',
                         mutation_rate=mr,
                         bias_std=bias_std,
-                        version='local-uniform',
-                        dist_bs=False,
-                        dynamic_mut_scale=adap,
-                        hill_iters=hill_iters)
+                        version='local-uniform')
     '''
     if generation == 5000 and generation != 0: 
         mutation_std = mutation_std/10
