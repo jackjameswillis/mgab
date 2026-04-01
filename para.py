@@ -67,7 +67,13 @@ BATCH_SIZE = 64
 hill_iters = 0
 
 # Create PopMLP instance for the population
-pop_mlp = PopMLP(population_size, shapes, activation, output_activation, w_bits, 'scale')
+pop_mlp = PopMLP(population_size, 
+                 shapes, 
+                 activation, 
+                 output_activation, 
+                 w_bits, 
+                 'scale', 
+                 smoothBeta=0)
 
 def celoss(logits, targets):
 
