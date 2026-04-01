@@ -26,7 +26,6 @@ class PopMLP(nn.Module):
         self.activation = activation
         self.output_activation = output_activation
         self.Q = P.Q(w_bits) if w_bits != 32 else P.f32()
-        
         self.weights = nn.ParameterList()
         self.biases = nn.ParameterList()
         self.ranges = []
@@ -35,6 +34,7 @@ class PopMLP(nn.Module):
         # Ensure all tensors are created on the correct device
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.fitnesses = torch.zeros(self.population_size, device=self.device)
+        self.t = torch.zeros(self.population_size, device = self.device)
         for i in range(len(shapes)-1):
             s = math.sqrt(6/(shapes[i]))
             if self.Q.bits != 32:
@@ -160,6 +160,8 @@ class PopMLP(nn.Module):
                     crosstype='uni', bias_std=0.01, mutation_rate=0.001, 
                     version='local-uniform'):
 
+        self.t += 1
+
         if deme_type == 'Ring':
 
             D = G.Ring(self.population_size, x.device)
@@ -188,11 +190,15 @@ class PopMLP(nn.Module):
 
                 won[selected[i]] = False
 
+                self.t[selected[i]] = 0
+
                 won[i] = True
                     
             else:
                         
                 won[i] = False
+
+                self.t[i] = 0
 
                 won[selected[i]] = True
     
