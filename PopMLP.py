@@ -26,7 +26,7 @@ class PopMLP(nn.Module):
         self.activation = activation
         self.output_activation = output_activation
         self.Q = P.Q(w_bits) if w_bits != 32 else P.f32()
-        self.fitnesses = torch.zeros((self.population_size, 1))
+        
         self.weights = nn.ParameterList()
         self.biases = nn.ParameterList()
         self.ranges = []
@@ -34,7 +34,7 @@ class PopMLP(nn.Module):
         self.smoothBeta = smoothBeta
         # Ensure all tensors are created on the correct device
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        
+        self.fitnesses = torch.zeros(self.population_size, device=self.device)
         for i in range(len(shapes)-1):
             s = math.sqrt(6/(shapes[i]))
             if self.Q.bits != 32:
@@ -174,14 +174,14 @@ class PopMLP(nn.Module):
 
         batch_idxs = torch.stack([bidxs]*self.population_size, dim=0)
 
-        self.fitnesses = torch.zeros(self.population_size, device=self.device)
+        #self.fitnesses = torch.zeros(self.population_size, device=self.device)
 
         for i in range(0, self.population_size, pop_batch_size):
 
             end = min(i + pop_batch_size, self.population_size)
             fitness_batch = self.evaluate(x, y, f, torch.arange(i, end, device=self.device), batch_idxs)
-            self.fitnesses[i:end] = self.fitnesses[i:end] * self.smoothBeta + fitness_batch.flatten() * (1 - self.smoothBeta)
-
+            self.fitnesses[i:end] = self.fitnesses[i:end] * self.b1 + fitness_batch.flatten() * (1 - self.b1)
+        self.fitnesses = self.fitnesses/(1 - self.b1**self.t)
         for i in range(self.population_size):
 
             if self.fitnesses[i] >= self.fitnesses[selected[i]]:
