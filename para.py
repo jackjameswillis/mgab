@@ -73,7 +73,7 @@ pop_mlp = PopMLP(population_size,
                  output_activation, 
                  w_bits, 
                  'scale', 
-                 smoothBeta=0)
+                 b1=0)
 
 def celoss(logits, targets):
 

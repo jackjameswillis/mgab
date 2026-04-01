@@ -17,7 +17,7 @@ import geography as G
 
 class PopMLP(nn.Module):
 
-    def __init__(self, population_size, shapes, activation=F.relu, output_activation=None, w_bits=32, r='scale', smoothBeta=0):
+    def __init__(self, population_size, shapes, activation=F.relu, output_activation=None, w_bits=32, r='scale', b1=0):
         
         super(PopMLP, self).__init__()
         
@@ -31,7 +31,7 @@ class PopMLP(nn.Module):
         self.biases = nn.ParameterList()
         self.ranges = []
         self.r = r
-        self.smoothBeta = smoothBeta
+        self.b1 = b1
         # Ensure all tensors are created on the correct device
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.fitnesses = torch.zeros(self.population_size, device=self.device)
