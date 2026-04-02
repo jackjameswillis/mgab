@@ -164,8 +164,7 @@ class PopMLP(nn.Module):
 
         D = G.Ring(self.population_size, x.device)
             
-        selected = D.tournament(deme_size)
-                  
+        selected = D.tournament(deme_size, rewire)
 
         won = torch.ones(self.population_size, device=self.device).to(torch.bool)
 
