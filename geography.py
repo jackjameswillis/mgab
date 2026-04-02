@@ -2,11 +2,11 @@ import torch
 
 def migrate(selected, shifted_indices, device, population_size):
 
-    target = torch.randint(0, population_size, (1,))
+    target = torch.randint(0, population_size, (1,), device=device)
 
     while selected[target] != -1 or target == shifted_indices[0]:
 
-        target = torch.randint(0, population_size, (1,))
+        target = torch.randint(0, population_size, (1,), device=device)
 
     selected[shifted_indices[0]] = target
 
