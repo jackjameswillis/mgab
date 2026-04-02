@@ -42,21 +42,21 @@ class Ring:
 
                 else:
 
-                        deme = shifted_indices[1:deme_size+1]
+                    deme = shifted_indices[1:deme_size+1]
 
-                        deme = deme[selected[deme] == -1]
+                    deme = deme[selected[deme] == -1]
 
-                        if len(deme) > 0:
+                    if len(deme) > 0:
 
-                            select = deme[torch.randint(0, len(deme), (1,)).item()]
+                        select = deme[torch.randint(0, len(deme), (1,)).item()]
 
-                            selected[shifted_indices[0]] = select
+                        selected[shifted_indices[0]] = select
 
-                            selected[select] = shifted_indices[0]
+                        selected[select] = shifted_indices[0]
                         
-                        else:
+                    else:
 
-                            selected = migrate(selected, shifted_indices, self.device, self.population_size)
+                        selected = migrate(selected, shifted_indices, self.device, self.population_size)
             
         return selected
 
