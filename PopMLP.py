@@ -156,21 +156,38 @@ class PopMLP(nn.Module):
 
     Then crossover and mutation is performed in parallel
     '''
-    def tournaments(self, x, y, f, bidxs, deme_type, deme_size, pop_batch_size, 
+    def tournaments(self, x, y, f, bidxs, deme_size, pop_batch_size, 
                     crosstype='uni', bias_std=0.01, mutation_rate=0.001, 
-                    version='local-uniform'):
+                    version='local-uniform', rewire=0.0):
 
         self.t += 1
 
-        if deme_type == 'Ring':
-
-            D = G.Ring(self.population_size, x.device)
+        D = G.Ring(self.population_size, x.device)
             
-            selected = D.tournament(deme_size)
-        
-        elif deme_type == 'SmallWorld':
+        selected = D.tournament(deme_size)
 
-            D = G.SmallWorld(self.population_size, x.device, k=4, p=0.1)
+        for i in range(len(selected)):
+            
+            if torch.rand((1,)) <= rewire:
+
+                target = torch.randint(0, len(selected), (1,))
+
+                while target == i or target == selected[i]:
+
+                    target = torch.randint(0, len(selected), (1,))
+                
+                tempa = torch.clone(selected[i])
+
+                tempb = torch.clone(selected[target])
+
+                selected[i] = target
+
+                selected[target] = i
+
+                selected[tempa] = tempb
+
+                selected[tempb] = tempa
+                  
 
         won = torch.ones(self.population_size, device=self.device).to(torch.bool)
 

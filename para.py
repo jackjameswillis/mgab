@@ -113,7 +113,7 @@ metrics = {
 
 import wandb
 wandb.init(project="mga-epochs")
-demesize = population_size
+demesize = 2
 # Evolution loop
 for generation in range(num_generations):
     batch_indices = torch.randperm(len(x_train))[:BATCH_SIZE]
@@ -124,13 +124,13 @@ for generation in range(num_generations):
                         y_train, 
                         celoss, 
                         bidxs,
-                        'Ring',
                         demesize, 
                         pop_batch,
                         'uni',
                         mutation_rate=mr,
                         bias_std=bias_std,
-                        version='local-uniform')
+                        version='local-uniform',
+                        rewire=0.1)
     '''
     if generation == 5000 and generation != 0: 
         mutation_std = mutation_std/10
