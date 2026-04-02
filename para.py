@@ -112,7 +112,7 @@ metrics = {
 }
 
 import wandb
-wandb.init(project="mga-epochs")
+wandb.init(project="mga-proper-migration")
 demesize = 2
 # Evolution loop
 for generation in range(num_generations):

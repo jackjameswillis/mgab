@@ -1,5 +1,19 @@
 import torch
 
+def migrate(selected, shifted_indices, device, population_size):
+
+    target = torch.randint(0, population_size, (1,))
+
+    while selected[target] != -1 or target == shifted_indices[0]:
+
+        target = torch.randint(0, population_size, (1,))
+
+    selected[shifted_indices[0]] = target
+
+    selected[target] = shifted_indices[0].to(torch.int)
+
+    return selected
+
 class Ring:
 
     def __init__(self, population_size, device):
@@ -8,7 +22,7 @@ class Ring:
 
         self.device = device
 
-    def tournament(self, deme_size):
+    def tournament(self, deme_size, migration_rate=0):
 
         deme_size -= 1
 
@@ -19,18 +33,30 @@ class Ring:
         for i in range(self.population_size):
 
             shifted_indices = torch.arange(start + i, start + i + self.population_size, device=self.device) % self.population_size
-                
+                    
             if selected[shifted_indices[0]] == -1:
 
-                deme = shifted_indices[1:deme_size+1]
+                if torch.rand((1,), device=self.device) <= migration_rate:
 
-                deme = deme[selected[deme] == -1]
+                    selected = migrate(selected, shifted_indices, self.device, self.population_size)
 
-                select = deme[torch.randint(0, len(deme), (1,)).item()]
+                else:
 
-                selected[shifted_indices[0]] = select
+                        deme = shifted_indices[1:deme_size+1]
 
-                selected[select] = shifted_indices[0]
+                        deme = deme[selected[deme] == -1]
+
+                        if len(deme) > 0:
+
+                            select = deme[torch.randint(0, len(deme), (1,)).item()]
+
+                            selected[shifted_indices[0]] = select
+
+                            selected[select] = shifted_indices[0]
+                        
+                        else:
+
+                            selected = migrate(selected, shifted_indices, self.device, self.population_size)
             
         return selected
 

@@ -165,28 +165,6 @@ class PopMLP(nn.Module):
         D = G.Ring(self.population_size, x.device)
             
         selected = D.tournament(deme_size)
-
-        for i in range(len(selected)):
-            
-            if torch.rand((1,)) <= rewire:
-
-                target = torch.randint(0, len(selected), (1,))
-
-                while target == i or target == selected[i]:
-
-                    target = torch.randint(0, len(selected), (1,))
-                
-                tempa = torch.clone(selected[i])
-
-                tempb = torch.clone(selected[target])
-
-                selected[i] = target
-
-                selected[target] = i
-
-                selected[tempa] = tempb
-
-                selected[tempb] = tempa
                   
 
         won = torch.ones(self.population_size, device=self.device).to(torch.bool)
