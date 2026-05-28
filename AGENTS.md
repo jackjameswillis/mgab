@@ -1,164 +1,81 @@
 # AGENTS.md - Guidelines for Agentic Coding
 
-## Build & Test Commands
+## Environment
 
-**No formal test framework** - this is a research codebase with script-based execution.
+- **Python 3.10** (`.python-version`), use the included `venv/` — do not install into system Python.
+- **GPU optional.** All scripts auto-detect CUDA; fall back to CPU. Use `.to(device)` on every tensor.
+- **No formal test framework.** This is a research codebase with script-based execution and wandb runs.
 
-| Action | Command |
-|--------|---------|
-| Run main training | `python para.py` |
-| Analyze saved population | `python analysis.py` |
-| Run SGD baseline | `python sgdtest.py` |
-| Check Python version | `python --version` |
+## Key Scripts
 
-**Dependencies:** Install via `pip install -r requirements.txt` (torch, scikit-learn, matplotlib, numpy). Optional: `pip install wandb` for experiment logging.
+| File | Command | Purpose |
+|------|---------|---------|
+| `para.py` | `python para.py [--shapes "784,64,10"] [--population_size 32] ...` | Train microbial GA population (all key params are CLI args now) |
+| `sweep.py` | `python sweep.py` | Sweep pop sizes 100–1000; saves local JSON + per-pop `.npy` checkpoints |
+| `analysis.py` | `python analysis.py` | Load a saved checkpoint (`longpop.npy`) and plot accuracy histogram |
+| `sgdtest.py` | `python sgdtest.py` | SGD baseline on MNIST (uses `torchvision`, not sklearn/OMNIBL) |
 
-## Code Style Guidelines
+## Module Boundaries
 
-### Imports
-- Use **absolute imports**: `from PopMLP import PopMLP`, not relative imports
-- Standard library first, then third-party, then local modules
-- Group imports logically (standard lib → third party → local)
+- **`PopMLP.py`** — Core: stacked-tensor MLP for population of individuals. Handles forward pass, tournament selection, crossover (`uni`/`asexual`), mutation. Creates `.to(device)` internally from `torch.cuda.is_available()`.
+- **`precisions.py`** — Quantization classes `Q(bits)` and `f32()`. `w_bits=32` in constructor means no quantization (float rand init); any other value uses int8 with that many bits. Bias is always f32.
+- **`geography.py`** — Tournament neighbor selection topologies: `Ring` and `SmallWorld`. `PopMLP.tournaments()` defaults to `G.Ring`. `geo.py` must define a class with `.tournament(deme_size, ...)` signature for custom topologies.
+- **`wandb/`** — Logged output directory (gitignored). Set `WANDB_API_KEY` to use wandb tracking; `sweep.py` stores metrics locally instead.
 
-### Formatting
-- **4-space indentation**
-- **88-character line limit** (follows black formatter conventions)
-- Blank lines: one between functions, two between classes
+## Data & Conventions
 
-### Naming Conventions
-- **snake_case** for functions, variables, modules: `population_size`, `batch_indices`
-- **PascalCase** for classes: `PopMLP`, `Precisions`
-- **UPPER_CASE** for constants: `BATCH_SIZE`, `NUM_GENERATIONS`
-- Private methods/attributes: single underscore prefix: `_internal_state`
+1. Load MNIST via `sklearn.datasets.fetch_openml('mnist_784', version=1, as_frame=False)`.
+2. One-hot encode labels (`np.zeros((n, 10))`).
+3. Split: `train_test_split(test_size=1/7, random_state=42)` → 6 train : 1 test.
+4. Normalize to `(x - mean) / std` using **training set** statistics (applied to both train and test).
 
-### Type Hints
-- Use Python's `typing` module for complex types
-- Prefer explicit types over `Any` where possible
-- Annotate function parameters and return values
+## Checkpoints & State
 
-### Error Handling
-- **Assertion errors** for internal consistency checks: `assert bits <= 8`
-- **ValueError** for invalid user input with descriptive messages
-- **try/except** blocks for external I/O operations
-- **No silent failures** - raise exceptions with clear messages
+- Saved via `pop_mlp.state_dict()` → torch file (`.npy`, `.pth`). Contains only `weights.*` and `biases.*` tensors.
+- Reconstruct from scratch with: create a new PopMLP, then `load_state_dict(torch.load(path))`. Do not pass `map_location=device` to `torch.load` — the existing loaders call `.to(device)` after loading.
+- Default training checkpoint filename in para.py: `'longpop.npy'`. sweep.py uses `'pop_size_{N}.npy'`.
 
-### Documentation
-- **Triple quotes** for module docstrings (first line of file)
-- **Docstrings** for all public functions/classes explaining purpose, parameters, returns
-- Inline comments for **non-obvious logic** only
-- Keep docstrings concise (1-3 sentence summary)
+## para.py CLI Arguments
 
-### PyTorch Conventions
-- Move tensors to device: `.to(device)`
-- Use `torch.no_grad()` for inference/evaluation
-- Use `requires_grad=False` for fixed parameters
-- Clone tensors when you need to preserve originals: `.clone()`
+| Argument | Default | Description |
+|----------|---------|-------------|
+| `--shapes` | `784,64,10` | Layer sizes as comma-separated string |
+| `--act` | `relu` | Activation: relu, tanh, sigmoid, elu, silu, linear |
+| `--population_size` | 32 | Number of individuals in the population |
+| `--num_generations` | 1000 | Training epochs (generations) |
+| `--BATCH_SIZE` | 64 | Mini-batch size for tournament steps |
+| `--pop_batch` | population_size | Batch size for test/training evaluation ops |
+| `--demesize` | 2 | Tournament deme size (neighborhood radius) |
+| `--mutation_rate`, `-mr` | 0.001 | Probability of weight mutation per individual |
+| `--bias_std` | 0.01 | Standard deviation for bias initialization |
+| `--w_bits` | 4 | Weight quantization bits (32 = full float) |
+| `--local-data` | `true` | Store metrics locally; pass `--local-data false --wandb_project <name>` to use wandb instead |
+| `--output`, `-o` | `longpop.npy` | Checkpoint filename saved at the end |
 
-### Style Notes
-- Prefer **list comprehensions** over `map/filter`
-- Use **f-strings** for string formatting
-- Use `torch.cat()` for tensor concatenation, not `torch.stack()` unless needed
-- Avoid magic numbers; extract to named constants
+Example: `python para.py --shapes "784,32,10" --population_size 64 -o my_pop.npy`
 
-### Existing Patterns to Follow
-- Population-based parallel computation (stack tensors, process all at once)
-- Tournament selection with deme-based local competition
-- State dict pattern for model serialization (`state_dict()`/`load_state_dict()`)
-- Separate precision classes (`f32`, `Q`) for quantization operations
+## Common Gotchas
 
-## Project Structure
+- **All weight tensors are `requires_grad=False`** — they are fixed genomes; GA handles evolution, no autograd on weights or biases.
+- If wandb is not installed, pass `--wandb_project disabled`. `sweep.py` does not use wandb.
+- **Loss/metric functions are closures passed as arguments** to every script — they operate on `(pred, target)` tensors with shapes aligned to the population batch dimension: first dim = individual index, second = mini-batch index.
+- `sgdtest.py` diverges from the other scripts: uses torchvision DataLoaders, cross-entropy loss directly (not custom celoss), different normalization (`transforms.Normalize((0.1307,), (0.3081,))`).
 
-| File | Description |
-|------|-------------|
-| `para.py` | Main training script - microbial GA with PopMLP on MNIST |
-| `analysis.py` | Analyze saved population - compute accuracy distribution |
-| `sgdtest.py` | SGD baseline for comparison - standard PyTorch training |
-| `PopMLP.py` | Population MLP module - parallel forward pass for all individuals |
-| `precisions.py` | Precision management - f32 and Q (quantized) classes |
+## Quick Reference — Common Operations
 
-## Key Constants & Parameters
-
-- `population_size`: Number of individuals (e.g., 100 or 1000)
-- `BATCH_SIZE`: Training batch size for tournament selection (e.g., 64)
-- `deme_size`: Local competition neighborhood size
-- `pop_batch`: Batch size for evaluating population (e.g., population_size)
-- `num_generations`: Evolution iterations (e.g., 5000)
-- `mr` (mutation_rate): Per-element mutation rate (e.g., 0.001)
-- `bias_std`: Gaussian mutation std for biases (e.g., 0.01)
-
-## Data Pipeline
-
-1. Load MNIST via `sklearn.datasets.fetch_openml`
-2. Split 6:1 train/test with `train_test_split(test_size=1/7, random_state=42)`
-3. Normalize: `(x - mean) / std` using training set statistics
-4. Convert to `torch.FloatTensor` and move to GPU if available
-
-## Common Operations
-
-### Evaluate Fitness
 ```python
-fitness = pop_mlp.evaluate(x, y, loss_fn, batch_indices, batch_idxs)
-```
+# Evaluate fitness for individuals [start..end] on data subset
+fitness = pop_mlp.evaluate(x, y, loss_fn, torch.arange(i, end), batch_idxs)
 
-### Run Tournament Selection
-```python
-pop_mlp.tournaments(x, y, loss_fn, BATCH_SIZE, deme_size, pop_batch,
+# Tournament evolution step
+pop_mlp.tournaments(x_train, y_train, celoss, bidxs, deme_size, pop_batch,
                     crosstype='uni', mutation_rate=mr, version='local-uniform')
+
+# Test metrics for all individuals
+acc, loss = pop_mlp.test(data, labels, torch.arange(pop_size), [accuracy, celoss])
+
+# Save / reload a population
+torch.save(pop.state_dict(), 'checkpoint.pt')
+pop = PopMLP(sz, shapes, act, oact, wbits, 'linear')  # recreate with same shapes/bits
+pop.load_state_dict(torch.load('checkpoint.pt'))
 ```
-
-### Test Metrics
-```python
-acc, loss = pop_mlp.test(x, y, batch_indices, [accuracy, celoss])
-```
-
-### Save/Load Population
-```python
-torch.save(pop_mlp.state_dict(), 'checkpoint.npy')
-pop_mlp.load_state_dict(torch.load('checkpoint.npy'))
-```
-
-## Logging & Experiment Tracking
-
-- Uses `wandb` (Weights & Biases) for experiment tracking
-- Logs: train/test loss_mean, loss_max, accuracy_mean, accuracy_max
-- Initialize with: `wandb.init(project="your-project-name")`
-
-## PyTorch Best Practices in This Codebase
-
-### Device Management
-```python
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-tensor = tensor.to(device)
-```
-
-### Gradient Control
-```python
-with torch.no_grad():
-    # inference or parameter updates without tracking gradients
-    output = model(input)
-```
-
-### Parameter Updates
-```python
-# Use requires_grad=False for fixed parameters (like GA genomes)
-weight = nn.Parameter(tensor, requires_grad=False)
-```
-
-### Tensor Operations
-```python
-# Clone to preserve original
-original = tensor.clone()
-
-# Concatenate along batch dimension
-result = torch.cat([t1, t2], dim=0)
-
-# Reshape for batch processing
-batched = x.unsqueeze(0).expand(pop_size, -1, -1)
-```
-
-## GPU Usage Notes
-
-- All tensors should be explicitly moved to device: `.to(device)`
-- Check GPU availability at startup: `torch.cuda.is_available()`
-- Use `map_location` when loading checkpoints on CPU: `torch.load(path, map_location=device)`
-- Keep data and models on same device to avoid runtime errors
